@@ -117,22 +117,74 @@ app.whenReady().then(() => {
   ipcMain.handle('config:set', (_e, patch: Partial<AppConfig>) => saveConfig(patch))
   ipcMain.handle('slippi:detect', () => detectSlippi())
 
-  // Walking skeleton: run `analyze` on a folder + connect code, stream
-  // progress events to the renderer, return the parsed session JSON.
-  ipcMain.handle('engine:analyze', async (event, folder: string, code: string) => {
+  // Full analysis chain: analyze N sets -> ingest into history -> recompute
+  // trends. Progress streams throughout; returns the parsed session + trends.
+  ipcMain.handle('engine:analyzeSession', async (event, opts: { sets: number }) => {
+    const config = loadConfig()
+    if (!config.replayFolder || !config.connectCode) return { ok: false, reason: 'not_configured' }
+
     const sessionsDir = join(dataDir(), 'sessions')
     mkdirSync(sessionsDir, { recursive: true })
-    const jsonPath = join(sessionsDir, `session-${Date.now()}.json`)
+    const stamp = Date.now()
+    const jsonPath = join(sessionsDir, `session-${stamp}.json`)
+    const historyPath = join(dataDir(), 'history.json')
+    const trendsJson = join(dataDir(), 'trends.json')
+    const forward = (e: EngineEvent): void => event.sender.send('engine:event', e)
 
-    const job = new EngineJob()
-    const exitCode = await job.run(
-      ['analyze', folder, '--code', code, '--sets', '2', '--singles-only',
-       '--pool-matchups', '--json', jsonPath, '--out', jsonPath.replace(/\.json$/, '.txt'),
+    const analyze = await new EngineJob().run(
+      ['analyze', config.replayFolder, '--code', config.connectCode,
+       '--sets', String(opts.sets), '--singles-only', '--pool-matchups',
+       '--json', jsonPath, '--out', join(sessionsDir, `session-${stamp}.txt`),
        '--data-dir', dataDir()],
-      (e: EngineEvent) => event.sender.send('engine:event', e)
+      forward
     )
-    if (exitCode !== 0) return { ok: false, exitCode }
-    return { ok: true, session: JSON.parse(readFileSync(jsonPath, 'utf-8')) }
+    if (analyze !== 0) return { ok: false, reason: 'analyze_failed' }
+
+    const ingest = await new EngineJob().run(
+      ['ingest', jsonPath, '--history', historyPath], forward)
+    if (ingest !== 0) return { ok: false, reason: 'ingest_failed' }
+
+    const trends = await new EngineJob().run(
+      ['trends', '--history', historyPath, '--out', join(dataDir(), 'trends.txt'),
+       '--json', trendsJson], forward)
+    if (trends !== 0) return { ok: false, reason: 'trends_failed' }
+
+    return {
+      ok: true,
+      session: JSON.parse(readFileSync(jsonPath, 'utf-8')),
+      trends: JSON.parse(readFileSync(trendsJson, 'utf-8'))
+    }
+  })
+
+  // Archived sessions, newest first.
+  ipcMain.handle('sessions:list', () => {
+    const sessionsDir = join(dataDir(), 'sessions')
+    try {
+      return readdirSync(sessionsDir)
+        .filter((f) => f.endsWith('.json'))
+        .sort()
+        .reverse()
+        .slice(0, 20)
+        .map((f) => {
+          try {
+            const s = JSON.parse(readFileSync(join(sessionsDir, f), 'utf-8'))
+            return { file: f, generated_at: s.generated_at, sets: s.sets }
+          } catch {
+            return null
+          }
+        })
+        .filter((s) => s !== null)
+    } catch {
+      return []
+    }
+  })
+
+  ipcMain.handle('trends:get', () => {
+    try {
+      return JSON.parse(readFileSync(join(dataDir(), 'trends.json'), 'utf-8'))
+    } catch {
+      return null
+    }
   })
 
   createWindow()

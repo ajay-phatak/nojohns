@@ -10,10 +10,40 @@ export interface EngineEvent {
   [key: string]: unknown
 }
 
-export interface AnalyzeResult {
+export type Metrics = Record<string, number | null>
+
+export interface SetRecord {
+  session_date: string
+  opp_code: string
+  my_char: string
+  opp_char: string
+  stages: string[]
+  n_games: number
+  wins: number
+  losses: number
+  files: string[]
+  metrics: Metrics
+  pro_baseline: Metrics | null
+  pro_games: number
+  gameplan: Record<string, unknown>
+}
+
+export interface SessionData {
+  generated_at: string
+  sets: SetRecord[]
+}
+
+export interface AnalyzeSessionResult {
   ok: boolean
-  exitCode?: number
-  session?: { generated_at: string; sets: Record<string, unknown>[] }
+  reason?: string
+  session?: SessionData
+  trends?: Record<string, unknown>
+}
+
+export interface SessionSummary {
+  file: string
+  generated_at: string
+  sets: SetRecord[]
 }
 
 export interface AppConfig {
@@ -56,7 +86,9 @@ export interface NoJohnsApi {
   getConfig: () => Promise<AppConfig>
   setConfig: (patch: Partial<AppConfig>) => Promise<AppConfig>
   detectSlippi: () => Promise<SlippiDetection>
-  analyze: (folder: string, code: string) => Promise<AnalyzeResult>
+  analyzeSession: (opts: { sets: number }) => Promise<AnalyzeSessionResult>
+  listSessions: () => Promise<SessionSummary[]>
+  getTrends: () => Promise<Record<string, unknown> | null>
   doctor: (folder: string, code: string) => Promise<DoctorResult>
   onEngineEvent: (cb: (e: EngineEvent) => void) => () => void
 }

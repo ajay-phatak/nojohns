@@ -6,8 +6,10 @@ const api = {
   setConfig: (patch: Record<string, unknown>): Promise<unknown> =>
     ipcRenderer.invoke('config:set', patch),
   detectSlippi: (): Promise<unknown> => ipcRenderer.invoke('slippi:detect'),
-  analyze: (folder: string, code: string): Promise<unknown> =>
-    ipcRenderer.invoke('engine:analyze', folder, code),
+  analyzeSession: (opts: { sets: number }): Promise<unknown> =>
+    ipcRenderer.invoke('engine:analyzeSession', opts),
+  listSessions: (): Promise<unknown> => ipcRenderer.invoke('sessions:list'),
+  getTrends: (): Promise<unknown> => ipcRenderer.invoke('trends:get'),
   doctor: (folder: string, code: string): Promise<unknown> =>
     ipcRenderer.invoke('engine:doctor', folder, code),
   proStatus: (dirNames: string[]): Promise<unknown> =>

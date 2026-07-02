@@ -553,6 +553,51 @@ def _whiff_metrics(move_usage):
     return whiff_pct, pun_pct
 
 
+def _metrics_dict(st, opp_st):
+    """Headline metrics from aggregate stats — shared by the player's set
+    records and the pro baseline so both sides of the comparison are computed
+    identically."""
+    lt = st["ledge_tech"]
+    whiff_pct, whiff_punished_pct = _whiff_metrics(st["move_usage"])
+
+    n_opened = len(st["dealt_seqs"])
+    n_lost = len(opp_st["dealt_seqs"]) if opp_st else 0
+
+    def pct(a, b):
+        return round(100.0 * a / b, 1) if b else None
+
+    return {
+        "sd_per_game": _r(st["avg_sds"], 2),
+        "shield_s": _r(st["avg_shield_s"]),
+        "crouch_s": _r(st["avg_crouch_s"]),
+        "center_pct": _r(st["avg_center_pct"]),
+        "lcancel_pct": _r(st["lc_rate"]),
+        "wavedash_pct": _r(st["wd_rate"]),
+        "f1_pct": _r(st["f1_rate"]),
+        "punish_pct": _r(st["avg_punish"]),
+        "kills": st["kills"],
+        "kill_rate_pct": pct(st["kills"], n_opened),
+        "edgeguard_above_pct": pct(st["eg_above_conv"], st["eg_above_att"]),
+        "edgeguard_below_pct": pct(st["eg_below_conv"], st["eg_below_att"]),
+        "neutral_opened": n_opened,
+        "neutral_lost": n_lost,
+        "neutral_win_pct": pct(n_opened, n_opened + n_lost),
+        "ledgedash_count": lt["ledgedash_count"],
+        "galint_avg": _r(lt["galint_sum"] / lt["galint_n"]) if lt["galint_n"] else None,
+        "galint_best": lt["galint_max"],
+        "galint_keep_pct": pct(lt["galint_pos"], lt["galint_n"]),
+        "ledgedash_fall_avg": _r(lt["ld_fall_sum"] / lt["ld_fall_n"]) if lt["ld_fall_n"] else None,
+        "ledge_hang_invuln_pct": pct(lt["hang_invuln_frames"], lt["hang_frames"]),
+        "avg_kill_pct": _avg_kill_pct(st["kill_pcts"]),
+        "reversals_per_game": _r(st["reversals"]["n"] / st["games"], 2),
+        "whiff_pct": whiff_pct,
+        "whiff_punished_pct": whiff_punished_pct,
+        "oos_punish_pct": _oos_punish_pct(st["oos"]),
+        "free_recovery_given_pct": pct(
+            st["eg_free"], st["eg_above_att"] + st["eg_below_att"]),
+    }
+
+
 def _set_record(set_games):
     """Flatten one matchup-set into a JSON-friendly record for the long-term coach.
     Reuses aggregate_stats (you) and aggregate_stats_opponent (neutral lost)."""
@@ -564,15 +609,10 @@ def _set_record(set_games):
 
     st = aggregate_stats(set_games)
     opp_st = aggregate_stats_opponent(set_games)
-    lt = st["ledge_tech"]
     files = sorted(g.get("file", "") for g in set_games)
-    whiff_pct, whiff_punished_pct = _whiff_metrics(st["move_usage"])
 
     n_opened = len(st["dealt_seqs"])
     n_lost = len(opp_st["dealt_seqs"]) if opp_st else 0
-
-    def pct(a, b):
-        return round(100.0 * a / b, 1) if b else None
 
     return {
         "session_date": _date_from_file(files[0] if files else ""),
@@ -584,36 +624,7 @@ def _set_record(set_games):
         "wins": st["wins"],
         "losses": st["losses"],
         "files": files,
-        "metrics": {
-            "sd_per_game": _r(st["avg_sds"], 2),
-            "shield_s": _r(st["avg_shield_s"]),
-            "crouch_s": _r(st["avg_crouch_s"]),
-            "center_pct": _r(st["avg_center_pct"]),
-            "lcancel_pct": _r(st["lc_rate"]),
-            "wavedash_pct": _r(st["wd_rate"]),
-            "f1_pct": _r(st["f1_rate"]),
-            "punish_pct": _r(st["avg_punish"]),
-            "kills": st["kills"],
-            "kill_rate_pct": pct(st["kills"], n_opened),
-            "edgeguard_above_pct": pct(st["eg_above_conv"], st["eg_above_att"]),
-            "edgeguard_below_pct": pct(st["eg_below_conv"], st["eg_below_att"]),
-            "neutral_opened": n_opened,
-            "neutral_lost": n_lost,
-            "neutral_win_pct": pct(n_opened, n_opened + n_lost),
-            "ledgedash_count": lt["ledgedash_count"],
-            "galint_avg": _r(lt["galint_sum"] / lt["galint_n"]) if lt["galint_n"] else None,
-            "galint_best": lt["galint_max"],
-            "galint_keep_pct": pct(lt["galint_pos"], lt["galint_n"]),
-            "ledgedash_fall_avg": _r(lt["ld_fall_sum"] / lt["ld_fall_n"]) if lt["ld_fall_n"] else None,
-            "ledge_hang_invuln_pct": pct(lt["hang_invuln_frames"], lt["hang_frames"]),
-            "avg_kill_pct": _avg_kill_pct(st["kill_pcts"]),
-            "reversals_per_game": _r(st["reversals"]["n"] / st["games"], 2),
-            "whiff_pct": whiff_pct,
-            "whiff_punished_pct": whiff_punished_pct,
-            "oos_punish_pct": _oos_punish_pct(st["oos"]),
-            "free_recovery_given_pct": pct(
-                st["eg_free"], st["eg_above_att"] + st["eg_below_att"]),
-        },
+        "metrics": _metrics_dict(st, opp_st),
         # Matchup gameplan distributions — merged per-matchup over time by coach.py.
         "gameplan": {
             "opened_by":        st["opened_by"],
@@ -652,10 +663,20 @@ def _set_record(set_games):
 
 
 def build_json_payload(sets):
-    """Structured per-set records for the whole session (consumed by coach.py)."""
+    """Structured per-set records for the whole session (consumed by coach.py
+    and the app). Each record carries the pro baseline for its matchup/stages
+    (cheap: pro parses are cached per matchup dir)."""
+    records = []
+    for s in sets:
+        rec = _set_record(s)
+        baseline, n_games = load_pro_metrics(
+            rec["my_char"], rec["opp_char"], stages=set(rec["stages"]))
+        rec["pro_baseline"] = baseline
+        rec["pro_games"] = n_games
+        records.append(rec)
     return {
         "generated_at": datetime.datetime.now().isoformat(timespec="seconds"),
-        "sets": [_set_record(s) for s in sets],
+        "sets": records,
     }
 
 
@@ -779,6 +800,36 @@ def load_pro_stats(my_char, opp_char, stages=None):
         return None, len(slp_files)
 
     return aggregate_stats(game_summaries), len(slp_files)
+
+
+def load_pro_metrics(my_char, opp_char, stages=None):
+    """Pro baseline in the same shape as a set record's metrics dict, so the
+    app can render you-vs-pro gaps without parsing the text report.
+
+    Returns (metrics_dict, n_games_used) or (None, 0)."""
+    pro_dir = pro_replays_dir(my_char, opp_char)
+    if pro_dir is None:
+        return None, 0
+    slp_files = [
+        os.path.join(pro_dir, f)
+        for f in os.listdir(pro_dir)
+        if f.lower().endswith(".slp")
+    ]
+    if not slp_files:
+        return None, 0
+
+    all_games = _load_pro_games(pro_dir, my_char, slp_files)
+    game_summaries = [
+        g for g in all_games
+        if len(g.get("port_order", [])) == 2
+        and (not stages or g.get("stage") in stages)
+    ]
+    if not game_summaries:
+        return None, 0
+
+    st = aggregate_stats(game_summaries)
+    opp_st = aggregate_stats_opponent(game_summaries)
+    return _metrics_dict(st, opp_st), len(game_summaries)
 
 
 def write_stats_block(stats, out, indent="    "):
