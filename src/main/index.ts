@@ -4,6 +4,8 @@ import { readFileSync, mkdirSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { EngineJob, EngineEvent } from './engine'
+import { loadConfig, saveConfig, dataDir, AppConfig } from './config'
+import { detectSlippi } from './slippi-detect'
 
 function createWindow(): void {
   // Create the browser window.
@@ -51,11 +53,14 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  ipcMain.handle('config:get', () => loadConfig())
+  ipcMain.handle('config:set', (_e, patch: Partial<AppConfig>) => saveConfig(patch))
+  ipcMain.handle('slippi:detect', () => detectSlippi())
+
   // Walking skeleton: run `analyze` on a folder + connect code, stream
   // progress events to the renderer, return the parsed session JSON.
   ipcMain.handle('engine:analyze', async (event, folder: string, code: string) => {
-    const dataDir = join(app.getPath('userData'), 'data')
-    const sessionsDir = join(dataDir, 'sessions')
+    const sessionsDir = join(dataDir(), 'sessions')
     mkdirSync(sessionsDir, { recursive: true })
     const jsonPath = join(sessionsDir, `session-${Date.now()}.json`)
 
@@ -63,7 +68,7 @@ app.whenReady().then(() => {
     const exitCode = await job.run(
       ['analyze', folder, '--code', code, '--sets', '2', '--singles-only',
        '--pool-matchups', '--json', jsonPath, '--out', jsonPath.replace(/\.json$/, '.txt'),
-       '--data-dir', dataDir],
+       '--data-dir', dataDir()],
       (e: EngineEvent) => event.sender.send('engine:event', e)
     )
     if (exitCode !== 0) return { ok: false, exitCode }

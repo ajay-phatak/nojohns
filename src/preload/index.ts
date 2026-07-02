@@ -2,6 +2,10 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 const api = {
+  getConfig: (): Promise<unknown> => ipcRenderer.invoke('config:get'),
+  setConfig: (patch: Record<string, unknown>): Promise<unknown> =>
+    ipcRenderer.invoke('config:set', patch),
+  detectSlippi: (): Promise<unknown> => ipcRenderer.invoke('slippi:detect'),
   analyze: (folder: string, code: string): Promise<unknown> =>
     ipcRenderer.invoke('engine:analyze', folder, code),
   onEngineEvent: (cb: (e: Record<string, unknown>) => void): (() => void) => {
