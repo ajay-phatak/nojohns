@@ -1,0 +1,27 @@
+# Node
+node_modules/
+dist/
+out/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+engine/dist/
+engine/build/
+
+# Personal data — never commit replays, history, or session outputs
+*.slp
+history.json
+session.json
+session.txt
+trends.json
+trends.txt
+*.pro_cache.pkl
+hf_file_list_cache.json
+pro_replays/
+
+# OS / editor
+Thumbs.db
+.DS_Store
