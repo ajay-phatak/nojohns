@@ -65,14 +65,31 @@ def _get_session():
     return _session
 
 
+def _curl_get(url):
+    """System-curl fallback. HF's CDN intermittently resets OpenSSL/requests
+    connections that curl (Schannel on Windows) survives, and vice versa —
+    empirically, two transports beat one."""
+    import subprocess
+    result = subprocess.run(
+        ["curl", "-L", "--insecure", "--tls-max", "1.2", "--silent", "--fail", url],
+        capture_output=True, timeout=120, check=True,
+    )
+    return result.stdout
+
+
 def hf_get(url, retries=MAX_RETRIES):
-    """Fetch URL bytes, retrying with backoff on transient failures."""
+    """Fetch URL bytes, retrying with backoff; each round tries requests
+    then falls back to system curl."""
     last_err = None
     for attempt in range(retries):
         try:
             resp = _get_session().get(url, timeout=120, verify=False)
             resp.raise_for_status()
             return resp.content
+        except Exception as e:
+            last_err = e
+        try:
+            return _curl_get(url)
         except Exception as e:
             last_err = e
         delay = RETRY_DELAYS[min(attempt, len(RETRY_DELAYS) - 1)]
@@ -87,7 +104,12 @@ CHAR_FILENAME_MAP = {
     "CPTFALCON":   "Captain Falcon",
     "ZELDA_SHEIK": "Sheik",
     "ICE_CLIMBERS": "Ice Climbers",
-    "GAMEANDWATCH": "Game And Watch",
+    # Dataset filenames are inconsistent ("Mr. Game _ Watch" / "Mr. Game &
+    # Watch"); the bare word "Game" matches all variants and no other char.
+    "GAMEANDWATCH": "Game",
+    "DOC":         "Dr. Mario",
+    "YLINK":       "Young Link",
+    "DK":          "Donkey Kong",
 }
 
 
