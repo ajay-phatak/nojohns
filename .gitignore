@@ -11,6 +11,7 @@ __pycache__/
 .venv/
 engine/dist/
 engine/build/
+*.egg-info/
 
 # Personal data — never commit replays, history, or session outputs
 *.slp

@@ -1,2 +1,0 @@
-[console_scripts]
-nojohns-engine = nojohns_engine.cli:main
