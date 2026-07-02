@@ -53,6 +53,21 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  // Validate replay folder + code; the result NDJSON event is the payload.
+  ipcMain.handle('engine:doctor', async (_e, folder: string, code: string) => {
+    let result: EngineEvent | null = null
+    let error: EngineEvent | null = null
+    const job = new EngineJob()
+    const exitCode = await job.run(
+      ['doctor', folder, ...(code ? ['--code', code] : [])],
+      (e: EngineEvent) => {
+        if (e.event === 'result') result = e
+        if (e.event === 'error') error = e
+      }
+    )
+    return { exitCode, result, error }
+  })
+
   ipcMain.handle('config:get', () => loadConfig())
   ipcMain.handle('config:set', (_e, patch: Partial<AppConfig>) => saveConfig(patch))
   ipcMain.handle('slippi:detect', () => detectSlippi())

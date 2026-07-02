@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AnalyzeResult, EngineEvent } from '../../preload/index.d'
+import type { AnalyzeResult, AppConfig, EngineEvent } from '../../preload/index.d'
+import Onboarding from './views/Onboarding'
 
-// Walking skeleton: prove folder+code -> engine spawn -> NDJSON progress ->
-// session JSON render. Real views replace this in later phases.
-function App(): React.JSX.Element {
-  const [folder, setFolder] = useState('')
-  const [code, setCode] = useState('')
+// Interim dashboard: config-driven analyze with live progress. Replaced by
+// the real Dashboard/SessionReport views in the views milestone.
+function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState('')
   const [logs, setLogs] = useState<string[]>([])
@@ -28,7 +27,7 @@ function App(): React.JSX.Element {
     setResult(null)
     setLogs([])
     try {
-      setResult(await window.api.analyze(folder, code))
+      setResult(await window.api.analyze(config.replayFolder!, config.connectCode!))
     } finally {
       setRunning(false)
       setProgress('')
@@ -37,24 +36,13 @@ function App(): React.JSX.Element {
 
   return (
     <div style={{ padding: 24, fontFamily: 'system-ui', color: '#eee' }}>
-      <h1>No Johns — walking skeleton</h1>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <input
-          style={{ flex: 2, padding: 6 }}
-          placeholder="Slippi replay folder (e.g. C:\Users\you\Documents\Slippi)"
-          value={folder}
-          onChange={(e) => setFolder(e.target.value)}
-        />
-        <input
-          style={{ flex: 1, padding: 6 }}
-          placeholder="Connect code (ABCD#123)"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-        />
-        <button disabled={running || !folder || !code} onClick={run}>
-          {running ? 'Analyzing…' : 'Analyze last 2 sets'}
-        </button>
-      </div>
+      <h1>No Johns</h1>
+      <p style={{ color: '#aaa' }}>
+        {config.mainCharacter} · {config.connectCode} · {config.replayFolder}
+      </p>
+      <button disabled={running} onClick={run}>
+        {running ? 'Analyzing…' : 'Analyze last 2 sets'}
+      </button>
 
       {progress && <p style={{ color: '#8fc' }}>{progress}</p>}
       {logs.map((l, i) => (
@@ -78,6 +66,18 @@ function App(): React.JSX.Element {
       )}
     </div>
   )
+}
+
+function App(): React.JSX.Element {
+  const [config, setConfig] = useState<AppConfig | null>(null)
+
+  useEffect(() => {
+    window.api.getConfig().then(setConfig)
+  }, [])
+
+  if (!config) return <p style={{ color: '#aaa', padding: 24 }}>Loading…</p>
+  if (!config.onboarded) return <Onboarding onDone={setConfig} />
+  return <Dashboard config={config} />
 }
 
 export default App
