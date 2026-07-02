@@ -1,0 +1,6 @@
+py-slippi>=1.6.2
+requests>=2.32
+
+[dev]
+pyinstaller>=6.21
+pytest>=8.0

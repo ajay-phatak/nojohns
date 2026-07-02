@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """
-fetch_pro_replays.py
-====================
 Downloads matchup replays from the HuggingFace tournament dataset,
 optionally filtering for specific connect codes.
 
@@ -9,56 +7,80 @@ The dataset is organized by character directory. --matchup specifies which
 directory to search and (optionally) which opponent to filter for within it.
 
 Usage:
-    python fetch_pro_replays.py --matchup SHEIK/FALCO --out pro_replays/
-    python fetch_pro_replays.py --matchup FALCO --out pro_replays/
-    python fetch_pro_replays.py --matchup SHEIK/FALCO --codes "JM#0" --dry-run
+    nojohns-engine fetch --matchup SHEIK/FALCO --out pro_replays/sheik_vs_falco
+    nojohns-engine fetch --matchup FALCO --out pro_replays/falco
+    nojohns-engine fetch --matchup SHEIK/FALCO --codes "JM#0" --dry-run
 """
 
-import sys
 import os
 import json
 import argparse
-import subprocess
+import ssl
 import tempfile
 import time
 
+import requests
+import urllib3
+from requests.adapters import HTTPAdapter
+
+# verify=False is deliberate (see _TLS12Adapter); don't spam stderr about it.
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+from . import events, paths
 from .game_review import get_netplay_info
 
 DATASET  = "erickfm/slippi-public-dataset-v3.7"
 BASE_URL = f"https://huggingface.co/datasets/{DATASET}/resolve/main"
 API_URL  = f"https://huggingface.co/api/datasets/{DATASET}/tree/main"
 
-# Windows Schannel rejects the HF CDN cert chain with TLS 1.3;
-# curl --insecure --tls-max 1.2 works reliably.
-CURL_BASE = ["curl", "-L", "--insecure", "--tls-max", "1.2", "--silent", "--fail"]
-
 MAX_RETRIES = 3
 RETRY_DELAYS = [3, 10, 30]
 
 
+class _TLS12Adapter(HTTPAdapter):
+    """Cap TLS at 1.2 and skip verification.
+
+    Windows Schannel rejects the HF CDN cert chain with TLS 1.3; the original
+    pipeline shelled out to `curl --insecure --tls-max 1.2`. This adapter is
+    the bundleable equivalent.
+    """
+
+    def init_poolmanager(self, *args, **kwargs):
+        ctx = ssl.create_default_context()
+        ctx.maximum_version = ssl.TLSVersion.TLSv1_2
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        kwargs["ssl_context"] = ctx
+        return super().init_poolmanager(*args, **kwargs)
+
+
+_session = None
+
+
+def _get_session():
+    global _session
+    if _session is None:
+        _session = requests.Session()
+        _session.mount("https://", _TLS12Adapter())
+    return _session
+
+
 def hf_get(url, retries=MAX_RETRIES):
-    """Fetch URL bytes using curl (works around Windows TLS issues with HF CDN)."""
+    """Fetch URL bytes, retrying with backoff on transient failures."""
     last_err = None
     for attempt in range(retries):
         try:
-            result = subprocess.run(
-                CURL_BASE + [url],
-                capture_output=True,
-                timeout=120,
-                check=True,
-            )
-            return result.stdout
-        except subprocess.CalledProcessError as e:
-            last_err = RuntimeError(f"curl exit {e.returncode}: {e.stderr.decode(errors='replace').strip()}")
+            resp = _get_session().get(url, timeout=120, verify=False)
+            resp.raise_for_status()
+            return resp.content
         except Exception as e:
             last_err = e
         delay = RETRY_DELAYS[min(attempt, len(RETRY_DELAYS) - 1)]
-        print(f"  [retry {attempt+1}/{retries}] {last_err} — waiting {delay}s")
+        events.log(f"  [retry {attempt+1}/{retries}] {last_err} — waiting {delay}s",
+                   level="warn")
         time.sleep(delay)
     raise last_err
 
-
-CACHE_FILE = "hf_file_list_cache.json"
 
 # Maps dataset directory names to the string that appears in filenames
 CHAR_FILENAME_MAP = {
@@ -69,15 +91,22 @@ CHAR_FILENAME_MAP = {
 }
 
 
-def list_matchup_files(char_dir, filter_char=None, cache=True):
+def _load_cache(cache_file):
+    if os.path.exists(cache_file):
+        with open(cache_file, "r") as f:
+            return json.load(f)
+    return {}
+
+
+def list_matchup_files(char_dir, filter_char=None, cache=True, cache_file=None):
     """Return file paths in char_dir, optionally filtered by opponent name."""
+    cache_file = cache_file or paths.hf_cache_file()
     cache_key = f"{char_dir}_{filter_char or 'ALL'}"
 
-    if cache and os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r") as f:
-            cached = json.load(f)
+    if cache:
+        cached = _load_cache(cache_file)
         if cache_key in cached:
-            print(f"  (using cached file list: {len(cached[cache_key])} files)")
+            events.log(f"  (using cached file list: {len(cached[cache_key])} files)")
             return cached[cache_key]
 
     url = f"{API_URL}/{char_dir}?recursive=false"
@@ -95,24 +124,22 @@ def list_matchup_files(char_dir, filter_char=None, cache=True):
         pattern = re.compile(r"(?<![A-Za-z])" + re.escape(search_term) + r"(?![A-Za-z])", re.IGNORECASE)
         if is_ditto:
             # Ditto: require the character name to appear at least twice in the filename
-            paths = [p for p in all_paths if len(pattern.findall(os.path.basename(p))) >= 2]
+            paths_ = [p for p in all_paths if len(pattern.findall(os.path.basename(p))) >= 2]
         else:
             # Word-boundary match against filename only (avoids Falco matching Falcon)
-            paths = [p for p in all_paths if pattern.search(os.path.basename(p))]
+            paths_ = [p for p in all_paths if pattern.search(os.path.basename(p))]
     else:
-        paths = all_paths
+        paths_ = all_paths
 
     if cache:
-        existing = {}
-        if os.path.exists(CACHE_FILE):
-            with open(CACHE_FILE, "r") as f:
-                existing = json.load(f)
-        existing[cache_key] = paths
-        with open(CACHE_FILE, "w") as f:
+        existing = _load_cache(cache_file)
+        existing[cache_key] = paths_
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, "w") as f:
             json.dump(existing, f, indent=2)
-        print(f"  (cached {len(paths)} file paths to {CACHE_FILE})")
+        events.log(f"  (cached {len(paths_)} file paths to {cache_file})")
 
-    return paths
+    return paths_
 
 
 def url_encode_path(hf_path):
@@ -132,10 +159,15 @@ def download_and_check(hf_path, target_codes, out_dir, dry_run=False):
     url = f"{BASE_URL}/{url_encode_path(hf_path)}"
     filename = os.path.basename(hf_path)
 
+    # Skip files we already have — makes re-fetch incremental.
+    if not dry_run and os.path.exists(os.path.join(out_dir, filename)):
+        events.log(f"  have: {filename}")
+        return True
+
     try:
         data = hf_get(url)
     except Exception as e:
-        print(f"  SKIP (download error): {filename} — {e}")
+        events.log(f"  SKIP (download error): {filename} — {e}", level="warn")
         return False
 
     with tempfile.NamedTemporaryFile(suffix=".slp", delete=False) as tmp:
@@ -160,15 +192,15 @@ def download_and_check(hf_path, target_codes, out_dir, dry_run=False):
                 os.makedirs(out_dir, exist_ok=True)
                 dest = os.path.join(out_dir, filename)
                 os.replace(tmp_path, dest)
-                print(f"  SAVED ({label}): {filename}")
+                events.log(f"  SAVED ({label}): {filename}")
             else:
-                print(f"  MATCH ({label}): {filename}")
+                events.log(f"  MATCH ({label}): {filename}")
             return True
         else:
-            print(f"  skip: {filename} — codes: {codes_in_file or 'none'}")
+            events.log(f"  skip: {filename} — codes: {codes_in_file or 'none'}")
             return False
     except Exception as e:
-        print(f"  SKIP (parse error): {filename} — {e}")
+        events.log(f"  SKIP (parse error): {filename} — {e}", level="warn")
         return False
     finally:
         try:
@@ -193,7 +225,14 @@ def main(argv=None):
                         help="Force fresh API listing (don't use cached file list)")
     parser.add_argument("--list-only", action="store_true",
                         help="Just list and cache the file paths, don't download")
+    parser.add_argument("--limit", type=int, default=None,
+                        help="Stop after saving this many replays")
+    parser.add_argument("--data-dir", type=str, default=None,
+                        help="Base data directory for the file-list cache "
+                             "(default: engine dir in dev, %%APPDATA%%\\nojohns when frozen)")
     args = parser.parse_args(argv)
+
+    cache_file = paths.hf_cache_file(args.data_dir)
 
     # Parse matchup: "SHEIK/FALCO" → dir=SHEIK, filter=Falco
     #                "FALCO"       → dir=FALCO, filter=None
@@ -207,26 +246,34 @@ def main(argv=None):
     target_codes = [c.strip() for c in args.codes.split(",") if c.strip()]
     matchup_str = f"{char_dir}/{filter_char}" if filter_char else char_dir
     if target_codes:
-        print(f"Searching {matchup_str} for codes: {target_codes}")
+        events.log(f"Searching {matchup_str} for codes: {target_codes}")
     else:
-        print(f"Searching {matchup_str} — no code filter (saving all parseable files)")
+        events.log(f"Searching {matchup_str} — no code filter (saving all parseable files)")
 
-    files = list_matchup_files(char_dir, filter_char=filter_char, cache=not args.no_cache)
-    print(f"Found {len(files)} files in dataset\n")
+    files = list_matchup_files(char_dir, filter_char=filter_char,
+                               cache=not args.no_cache, cache_file=cache_file)
+    events.log(f"Found {len(files)} files in dataset")
 
     if args.list_only:
         for p in files:
-            print(f"  {p}")
-        return
+            events.log(f"  {p}")
+        events.result(listed=len(files))
+        return 0
 
     found = 0
-    for hf_path in files:
+    for idx, hf_path in enumerate(files, 1):
+        events.progress("fetch", idx, len(files), detail=os.path.basename(hf_path))
         if download_and_check(hf_path, target_codes, args.out, dry_run=args.dry_run):
             found += 1
+            if args.limit and found >= args.limit:
+                events.log(f"Reached --limit {args.limit}; stopping.")
+                break
 
-    print(f"\nDone. {found}/{len(files)} files matched.")
+    events.log(f"Done. {found}/{len(files)} files matched.")
     if found > 0 and not args.dry_run:
-        print(f"Saved to: {os.path.abspath(args.out)}")
+        events.log(f"Saved to: {os.path.abspath(args.out)}")
+    events.result(found=found, scanned=len(files), out=os.path.abspath(args.out))
+    return 0
 
 
 if __name__ == "__main__":
