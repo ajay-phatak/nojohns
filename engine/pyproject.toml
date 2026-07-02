@@ -1,0 +1,25 @@
+[project]
+name = "nojohns-engine"
+version = "0.1.0"
+description = "No Johns analysis engine — Slippi replay analytics vs pro baselines"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "py-slippi>=1.6.2",
+    "requests>=2.32",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.21",
+    "pytest>=8.0",
+]
+
+[project.scripts]
+nojohns-engine = "nojohns_engine.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["nojohns_engine"]
