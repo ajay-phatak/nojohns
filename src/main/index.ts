@@ -102,6 +102,25 @@ app.whenReady().then(() => {
             event.sender.send('engine:event', e)
           }
         )
+        if (exitCode === 0) {
+          // New pros can change baselines on archived sessions — patch them
+          // in place so old reports show the comparison without re-analyzing.
+          const sessionsDir = join(dataDir(), 'sessions')
+          let sessionFiles: string[] = []
+          try {
+            sessionFiles = readdirSync(sessionsDir)
+              .filter((f) => f.endsWith('.json'))
+              .map((f) => join(sessionsDir, f))
+          } catch {
+            // no sessions yet
+          }
+          if (sessionFiles.length > 0) {
+            await new EngineJob().run(
+              ['rebaseline', ...sessionFiles, '--data-dir', dataDir()],
+              (e: EngineEvent) => event.sender.send('engine:event', e)
+            )
+          }
+        }
         return { ok: exitCode === 0, result }
       } finally {
         activeFetch = null

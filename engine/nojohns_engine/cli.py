@@ -8,6 +8,7 @@ original argument semantics:
     nojohns-engine trends --history <history.json> [--out p] [--json p]
     nojohns-engine fetch --matchup SHEIK/FALCO [--codes ...] [--data-dir p]
     nojohns-engine doctor <folder> --code ABCD#123
+    nojohns-engine rebaseline <session.json> [...] [--data-dir p]
 
 The global --ndjson flag (any position) switches stdout to one-JSON-object-
 per-line events for the Electron shell; without it the commands behave like
@@ -19,7 +20,7 @@ from . import events
 
 USAGE = __doc__
 
-COMMANDS = ("analyze", "ingest", "trends", "fetch", "doctor")
+COMMANDS = ("analyze", "ingest", "trends", "fetch", "doctor", "rebaseline")
 
 
 def main(argv=None):
@@ -46,6 +47,9 @@ def main(argv=None):
     if cmd == "doctor":
         from . import doctor
         return doctor.main(rest)
+    if cmd == "rebaseline":
+        from . import rebaseline
+        return rebaseline.main(rest)
 
     events.error(f"Unknown command: {cmd} (expected one of {', '.join(COMMANDS)})",
                  code="unknown_command")
