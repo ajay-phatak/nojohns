@@ -30,7 +30,29 @@ export interface SlippiDetection {
   codeSuggestions: string[]
 }
 
+export interface ProDirStatus {
+  name: string
+  count: number
+  bytes: number
+}
+
+export interface FetchOpts {
+  datasetDir: string
+  token: string
+  outDirName: string
+  limit: number
+}
+
+export interface FetchResult {
+  ok: boolean
+  reason?: string
+  result?: { found?: number; scanned?: number; out?: string } | null
+}
+
 export interface NoJohnsApi {
+  proStatus: (dirNames: string[]) => Promise<ProDirStatus[]>
+  fetchPros: (opts: FetchOpts) => Promise<FetchResult>
+  cancelFetch: () => Promise<boolean>
   getConfig: () => Promise<AppConfig>
   setConfig: (patch: Partial<AppConfig>) => Promise<AppConfig>
   detectSlippi: () => Promise<SlippiDetection>

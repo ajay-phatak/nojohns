@@ -10,6 +10,11 @@ const api = {
     ipcRenderer.invoke('engine:analyze', folder, code),
   doctor: (folder: string, code: string): Promise<unknown> =>
     ipcRenderer.invoke('engine:doctor', folder, code),
+  proStatus: (dirNames: string[]): Promise<unknown> =>
+    ipcRenderer.invoke('proReplays:status', dirNames),
+  fetchPros: (opts: Record<string, unknown>): Promise<unknown> =>
+    ipcRenderer.invoke('engine:fetch', opts),
+  cancelFetch: (): Promise<unknown> => ipcRenderer.invoke('engine:cancelFetch'),
   onEngineEvent: (cb: (e: Record<string, unknown>) => void): (() => void) => {
     const listener = (_: unknown, e: Record<string, unknown>): void => cb(e)
     ipcRenderer.on('engine:event', listener)

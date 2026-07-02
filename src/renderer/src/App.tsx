@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AnalyzeResult, AppConfig, EngineEvent } from '../../preload/index.d'
 import Onboarding from './views/Onboarding'
+import ProReplays from './views/ProReplays'
 
 // Interim dashboard: config-driven analyze with live progress. Replaced by
 // the real Dashboard/SessionReport views in the views milestone.
@@ -35,8 +36,8 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
   }
 
   return (
-    <div style={{ padding: 24, fontFamily: 'system-ui', color: '#eee' }}>
-      <h1>No Johns</h1>
+    <div>
+      <h2>Dashboard</h2>
       <p style={{ color: '#aaa' }}>
         {config.mainCharacters.join(' / ')} · {config.connectCode} · {config.replayFolder}
       </p>
@@ -68,8 +69,12 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
   )
 }
 
+const VIEWS = ['Dashboard', 'Pro Replays'] as const
+type View = (typeof VIEWS)[number]
+
 function App(): React.JSX.Element {
   const [config, setConfig] = useState<AppConfig | null>(null)
+  const [view, setView] = useState<View>('Dashboard')
 
   useEffect(() => {
     window.api.getConfig().then(setConfig)
@@ -77,7 +82,29 @@ function App(): React.JSX.Element {
 
   if (!config) return <p style={{ color: '#aaa', padding: 24 }}>Loading…</p>
   if (!config.onboarded) return <Onboarding onDone={setConfig} />
-  return <Dashboard config={config} />
+
+  return (
+    <div style={{ padding: 24, fontFamily: 'system-ui', color: '#eee' }}>
+      <nav style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {VIEWS.map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              padding: '6px 12px',
+              background: view === v ? '#26a' : '#333',
+              color: '#eee',
+              border: '1px solid #555'
+            }}
+          >
+            {v}
+          </button>
+        ))}
+      </nav>
+      {view === 'Dashboard' && <Dashboard config={config} />}
+      {view === 'Pro Replays' && <ProReplays config={config} />}
+    </div>
+  )
 }
 
 export default App

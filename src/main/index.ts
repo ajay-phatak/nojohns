@@ -1,6 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
-import { readFileSync, mkdirSync } from 'fs'
+import { readFileSync, mkdirSync, readdirSync, statSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { EngineJob, EngineEvent } from './engine'
@@ -66,6 +66,51 @@ app.whenReady().then(() => {
       }
     )
     return { exitCode, result, error }
+  })
+
+  // Pro replay inventory: replay count + disk usage per matchup dir.
+  ipcMain.handle('proReplays:status', (_e, dirNames: string[]) => {
+    const base = join(dataDir(), 'pro_replays')
+    return dirNames.map((name) => {
+      const dir = join(base, name)
+      try {
+        const slp = readdirSync(dir).filter((f) => f.toLowerCase().endsWith('.slp'))
+        const bytes = slp.reduce((sum, f) => sum + statSync(join(dir, f)).size, 0)
+        return { name, count: slp.length, bytes }
+      } catch {
+        return { name, count: 0, bytes: 0 }
+      }
+    })
+  })
+
+  // Fetch pro replays for one matchup. One fetch at a time; progress streams
+  // over engine:event like every other job.
+  let activeFetch: EngineJob | null = null
+  ipcMain.handle(
+    'engine:fetch',
+    async (event, opts: { datasetDir: string; token: string; outDirName: string; limit: number }) => {
+      if (activeFetch) return { ok: false, reason: 'busy' }
+      const outDir = join(dataDir(), 'pro_replays', opts.outDirName)
+      let result: EngineEvent | null = null
+      activeFetch = new EngineJob()
+      try {
+        const exitCode = await activeFetch.run(
+          ['fetch', '--matchup', `${opts.datasetDir}/${opts.token}`, '--out', outDir,
+           '--data-dir', dataDir(), '--limit', String(opts.limit)],
+          (e: EngineEvent) => {
+            if (e.event === 'result') result = e
+            event.sender.send('engine:event', e)
+          }
+        )
+        return { ok: exitCode === 0, result }
+      } finally {
+        activeFetch = null
+      }
+    }
+  )
+  ipcMain.handle('engine:cancelFetch', () => {
+    activeFetch?.cancel()
+    return true
   })
 
   ipcMain.handle('config:get', () => loadConfig())
