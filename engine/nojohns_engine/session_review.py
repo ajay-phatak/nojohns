@@ -19,7 +19,8 @@ import pickle
 import datetime
 import argparse
 
-from game_review import (
+from . import events, paths
+from .game_review import (
     analyze, detect_port, get_netplay_info, get_direct_codes,
     AERIALS, POSTLAND_CATEGORIES, POSTLAND_AERIAL_BUCKETS,
     LEDGE_OPTIONS, LEDGE_INTANG_FRAMES,
@@ -44,7 +45,7 @@ FPS = 60
 #   pro_replays/sheik_vs_falco/
 #   pro_replays/sheik_vs_fox/
 # etc.
-PRO_REPLAYS_BASE = os.path.join(os.path.dirname(__file__), "pro_replays")
+PRO_REPLAYS_BASE = paths.pro_replays_base()
 
 
 def resolve_folder(base):
@@ -717,7 +718,9 @@ def _load_pro_games(pro_dir, my_char, slp_files):
         pass  # missing/stale/corrupt cache -> reparse
 
     games = []
-    for path in slp_files:
+    for base_idx, path in enumerate(slp_files, 1):
+        events.progress("baseline", base_idx, len(slp_files),
+                        detail=os.path.basename(path))
         _, game_data = analyze(path)
         if game_data is None:
             continue
@@ -1148,7 +1151,7 @@ def session_report(folder, my_code, count=None, sets=None, singles_only=False,
     else:
         files, resolved = get_all_slp_files(folder, count)
     if not files:
-        print(f"No .slp files found in: {resolved}")
+        events.error(f"No .slp files found in: {resolved}", code="no_slp_files")
         sys.exit(1)
 
     # When limiting by sets, scan newest-first so we can stop early,
@@ -1161,7 +1164,9 @@ def session_report(folder, my_code, count=None, sets=None, singles_only=False,
     set_count = 0
     current_key = None  # track matchup changes (opp + characters) to count sets
 
-    for path in scan_files:
+    for parse_idx, path in enumerate(scan_files, 1):
+        events.progress("parse", parse_idx, len(scan_files),
+                        detail=os.path.basename(path))
         port = detect_port(path, my_code)
         if port is None:
             skipped.append(os.path.basename(path))
@@ -1355,8 +1360,9 @@ def session_report(folder, my_code, count=None, sets=None, singles_only=False,
     return "\n".join(lines)
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(
+        prog="nojohns-engine analyze",
         description="Aggregate session stats across multiple sets."
     )
     parser.add_argument("folder", help="Path to Slippi folder (or parent with YYYY-MM subfolders)")
@@ -1375,7 +1381,14 @@ def main():
     parser.add_argument("--files", nargs="+", default=None,
                         help="Explicit .slp files to analyze (overrides folder scan "
                              "and --count); useful for re-running a specific session")
-    args = parser.parse_args()
+    parser.add_argument("--data-dir", type=str, default=None,
+                        help="Base data directory holding pro_replays/ "
+                             "(default: engine dir in dev, %%APPDATA%%\\nojohns when frozen)")
+    args = parser.parse_args(argv)
+
+    if args.data_dir:
+        global PRO_REPLAYS_BASE
+        PRO_REPLAYS_BASE = paths.pro_replays_base(args.data_dir)
 
     report = session_report(args.folder, args.code, count=args.count, sets=args.sets,
                             singles_only=args.singles_only,
@@ -1386,10 +1399,13 @@ def main():
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             f.write(report)
-        print(f"Report saved to {args.out}")
-    else:
+        if not events.enabled:
+            print(f"Report saved to {args.out}")
+    elif not events.enabled:
         print(report)
+    events.result(out=args.out, json=args.json_path)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

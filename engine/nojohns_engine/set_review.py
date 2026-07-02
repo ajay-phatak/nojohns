@@ -15,7 +15,7 @@ import sys
 import os
 import argparse
 
-from game_review import analyze, detect_port, LEDGE_OPTIONS
+from .game_review import analyze, detect_port, LEDGE_OPTIONS
 
 FPS = 60
 

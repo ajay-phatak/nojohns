@@ -22,7 +22,7 @@ import subprocess
 import tempfile
 import time
 
-from game_review import get_netplay_info
+from .game_review import get_netplay_info
 
 DATASET  = "erickfm/slippi-public-dataset-v3.7"
 BASE_URL = f"https://huggingface.co/datasets/{DATASET}/resolve/main"
@@ -177,8 +177,10 @@ def download_and_check(hf_path, target_codes, out_dir, dry_run=False):
             pass
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Fetch pro player replays from HuggingFace dataset.")
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="nojohns-engine fetch",
+        description="Fetch pro player replays from HuggingFace dataset.")
     parser.add_argument("--matchup", type=str, required=True,
                         help="Character directory, optionally with opponent: FALCO or SHEIK/FALCO")
     parser.add_argument("--codes",   type=str, default="",
@@ -191,7 +193,7 @@ def main():
                         help="Force fresh API listing (don't use cached file list)")
     parser.add_argument("--list-only", action="store_true",
                         help="Just list and cache the file paths, don't download")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     # Parse matchup: "SHEIK/FALCO" → dir=SHEIK, filter=Falco
     #                "FALCO"       → dir=FALCO, filter=None

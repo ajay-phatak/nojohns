@@ -28,6 +28,8 @@ import hashlib
 import argparse
 import datetime
 
+from . import events
+
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 # Headline metrics tracked over time.
@@ -73,7 +75,8 @@ def load_history(path):
             data.setdefault("records", [])
             return data
         except Exception:
-            print(f"WARN: could not read history at {path}; starting fresh.")
+            events.log(f"WARN: could not read history at {path}; starting fresh.",
+                       level="warn")
     return {"records": []}
 
 
@@ -117,8 +120,8 @@ def ingest(session_json, history_path, replace=False):
 
     hist["records"].sort(key=_record_sort_key)
     save_history(history_path, hist)
-    print(f"Ingested {added} new + {replaced} replaced set(s); history now has "
-          f"{len(hist['records'])} record(s) at {history_path}")
+    events.log(f"Ingested {added} new + {replaced} replaced set(s); history now has "
+               f"{len(hist['records'])} record(s) at {history_path}")
     return added + replaced
 
 
@@ -578,8 +581,10 @@ def _fmt_string_outcomes(so, top=6):
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-def main():
-    parser = argparse.ArgumentParser(description="Melee long-term coach: persist analyses + trends.")
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="nojohns-engine",
+        description="Melee long-term coach: persist analyses + trends.")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_ing = sub.add_parser("ingest", help="Fold a session's --json output into history (idempotent).")
@@ -595,7 +600,7 @@ def main():
     p_tr.add_argument("--json", dest="json_path", default=None,
                       help="Write structured trends JSON here")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.cmd == "ingest":
         ingest(args.session_json, args.history, replace=args.replace)
@@ -609,10 +614,13 @@ def main():
         if args.out:
             with open(args.out, "w", encoding="utf-8") as f:
                 f.write(report)
-            print(f"Trends written to {args.out}")
-        else:
+            if not events.enabled:
+                print(f"Trends written to {args.out}")
+        elif not events.enabled:
             print(report)
+        events.result(out=args.out, json=args.json_path)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
