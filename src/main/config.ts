@@ -5,8 +5,8 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 export interface AppConfig {
   replayFolder: string | null
   connectCode: string | null
-  mainCharacter: string | null
-  matchups: string[] // opponent characters, e.g. ["fox", "falco", "marth"]
+  mainCharacters: string[] // one or more mains, e.g. ["Sheik", "Fox"]
+  matchups: string[] // opponent characters, e.g. ["Fox", "Falco", "Marth"]
   notesFolder: string | null
   onboarded: boolean
 }
@@ -14,7 +14,7 @@ export interface AppConfig {
 const DEFAULTS: AppConfig = {
   replayFolder: null,
   connectCode: null,
-  mainCharacter: null,
+  mainCharacters: [],
   matchups: [],
   notesFolder: null,
   onboarded: false
@@ -27,6 +27,11 @@ export const dataDir = (): string => join(app.getPath('userData'), 'data')
 export function loadConfig(): AppConfig {
   try {
     const raw = JSON.parse(readFileSync(configPath(), 'utf-8'))
+    // Migrate pre-multiselect configs (mainCharacter: string)
+    if (typeof raw.mainCharacter === 'string' && !Array.isArray(raw.mainCharacters)) {
+      raw.mainCharacters = raw.mainCharacter ? [raw.mainCharacter] : []
+      delete raw.mainCharacter
+    }
     return { ...DEFAULTS, ...raw }
   } catch {
     return { ...DEFAULTS }

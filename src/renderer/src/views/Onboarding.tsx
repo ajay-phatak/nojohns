@@ -14,7 +14,7 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
   const [detection, setDetection] = useState<SlippiDetection | null>(null)
   const [folder, setFolder] = useState('')
   const [code, setCode] = useState('')
-  const [character, setCharacter] = useState('')
+  const [characters, setCharacters] = useState<string[]>([])
   const [matchups, setMatchups] = useState<string[]>([])
   const [checking, setChecking] = useState(false)
   const [doctorRes, setDoctorRes] = useState<DoctorResult | null>(null)
@@ -40,17 +40,21 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
     const config = await window.api.setConfig({
       replayFolder: folder,
       connectCode: code,
-      mainCharacter: character,
+      mainCharacters: characters,
       matchups,
       onboarded: true
     })
     onDone(config)
   }
 
-  const toggleMatchup = (name: string): void =>
-    setMatchups((prev) =>
-      prev.includes(name) ? prev.filter((m) => m !== name) : [...prev, name].slice(0, 8)
-    )
+  const toggle =
+    (setter: React.Dispatch<React.SetStateAction<string[]>>, cap: number) =>
+    (name: string): void =>
+      setter((prev) =>
+        prev.includes(name) ? prev.filter((m) => m !== name) : [...prev, name].slice(0, cap)
+      )
+  const toggleCharacter = toggle(setCharacters, 4)
+  const toggleMatchup = toggle(setMatchups, 8)
 
   const ok = doctorRes?.exitCode === 0 && (doctorRes.result?.code_seen_in ?? 0) > 0
 
@@ -123,17 +127,23 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
       {step === 3 && (
         <section>
           <h2>3. Who do you play, and against what?</h2>
-          <label>
-            Your character:{' '}
-            <select value={character} onChange={(e) => setCharacter(e.target.value)}>
-              <option value="">— pick —</option>
-              {CHARACTERS.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <p>Your character(s) — pick all your mains (up to 4):</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {CHARACTERS.map((c) => (
+              <button
+                key={c.name}
+                onClick={() => toggleCharacter(c.name)}
+                style={{
+                  padding: '4px 8px',
+                  background: characters.includes(c.name) ? '#26a' : '#333',
+                  color: '#eee',
+                  border: '1px solid #555'
+                }}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
           <p style={{ marginTop: 12 }}>Common opponents (up to 8):</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {CHARACTERS.map((c) => (
@@ -157,7 +167,7 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
           </p>
           <div style={{ marginTop: 12 }}>
             <button onClick={() => setStep(2)}>Back</button>{' '}
-            <button disabled={!character} onClick={finish}>
+            <button disabled={characters.length === 0} onClick={finish}>
               Finish
             </button>
           </div>

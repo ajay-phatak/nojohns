@@ -38,7 +38,7 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
     <div style={{ padding: 24, fontFamily: 'system-ui', color: '#eee' }}>
       <h1>No Johns</h1>
       <p style={{ color: '#aaa' }}>
-        {config.mainCharacter} · {config.connectCode} · {config.replayFolder}
+        {config.mainCharacters.join(' / ')} · {config.connectCode} · {config.replayFolder}
       </p>
       <button disabled={running} onClick={run}>
         {running ? 'Analyzing…' : 'Analyze last 2 sets'}

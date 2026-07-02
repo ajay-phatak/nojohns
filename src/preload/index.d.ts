@@ -19,7 +19,7 @@ export interface AnalyzeResult {
 export interface AppConfig {
   replayFolder: string | null
   connectCode: string | null
-  mainCharacter: string | null
+  mainCharacters: string[]
   matchups: string[]
   notesFolder: string | null
   onboarded: boolean
