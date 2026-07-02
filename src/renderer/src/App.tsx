@@ -3,9 +3,10 @@ import type { AppConfig } from '../../preload/index.d'
 import Onboarding from './views/Onboarding'
 import Dashboard from './views/Dashboard'
 import ProReplays from './views/ProReplays'
+import Matchups from './views/Matchups'
 import Settings from './views/Settings'
 
-const VIEWS = ['Dashboard', 'Pro Replays', 'Settings'] as const
+const VIEWS = ['Dashboard', 'Matchups', 'Pro Replays', 'Settings'] as const
 type View = (typeof VIEWS)[number]
 
 function App(): React.JSX.Element {
@@ -38,6 +39,7 @@ function App(): React.JSX.Element {
         ))}
       </nav>
       {view === 'Dashboard' && <Dashboard config={config} />}
+      {view === 'Matchups' && <Matchups />}
       {view === 'Pro Replays' && <ProReplays config={config} />}
       {view === 'Settings' && <Settings config={config} onSaved={setConfig} />}
     </div>

@@ -9,6 +9,7 @@ out/
 __pycache__/
 *.pyc
 .venv/
+.venv-build/
 engine/dist/
 engine/build/
 *.egg-info/
