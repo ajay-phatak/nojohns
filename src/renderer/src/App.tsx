@@ -4,9 +4,10 @@ import Onboarding from './views/Onboarding'
 import Dashboard from './views/Dashboard'
 import ProReplays from './views/ProReplays'
 import Matchups from './views/Matchups'
+import Coach from './views/Coach'
 import Settings from './views/Settings'
 
-const VIEWS = ['Dashboard', 'Matchups', 'Pro Replays', 'Settings'] as const
+const VIEWS = ['Dashboard', 'Matchups', 'Pro Replays', 'Coach', 'Settings'] as const
 type View = (typeof VIEWS)[number]
 
 function App(): React.JSX.Element {
@@ -66,6 +67,7 @@ function App(): React.JSX.Element {
       {view === 'Dashboard' && <Dashboard config={config} />}
       {view === 'Matchups' && <Matchups config={config} />}
       {view === 'Pro Replays' && <ProReplays config={config} />}
+      {view === 'Coach' && <Coach />}
       {view === 'Settings' && <Settings config={config} onSaved={setConfig} />}
     </div>
   )

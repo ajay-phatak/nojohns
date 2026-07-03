@@ -114,12 +114,33 @@ export interface NoJohnsApi {
   setCoachKey: (key: string) => Promise<{ ok: boolean; reason?: string }>
   clearCoachKey: () => Promise<{ ok: boolean }>
   coachKeyStatus: () => Promise<CoachKeyStatus>
+  coachReport: (sessionFile?: string) => Promise<CoachResult>
+  coachChat: (text: string) => Promise<CoachResult>
+  coachReset: () => Promise<boolean>
+  coachHasConversation: () => Promise<boolean>
+  onCoachDelta: (cb: (text: string) => void) => () => void
   onEngineEvent: (cb: (e: EngineEvent) => void) => () => void
 }
 
 export interface CoachKeyStatus {
   configured: boolean
   last4?: string
+}
+
+export interface CoachUsage {
+  inputTokens: number
+  outputTokens: number
+  cacheWriteTokens: number
+  cacheReadTokens: number
+  costUsd: number
+  monthUsd: number
+}
+
+export interface CoachResult {
+  ok: boolean
+  reason?: string
+  text?: string
+  usage?: CoachUsage
 }
 
 export interface DoctorResult {

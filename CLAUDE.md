@@ -63,11 +63,14 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
 ## Roadmap state
 
 Tier 1 shipped as v0.1.1; tier 2 (notes) shipped as v0.2.0. Phase C (AI coach)
-in progress: API key plumbing done (safeStorage ciphertext in userData/
-coach.key — deliberately NOT in config.json so the renderer can never see or
-clobber it; coach:setKey/clearKey/keyStatus IPC; Settings UI), coach system
-prompt drafted at prompts/coach-system.md. Remaining: Anthropic client in
-main (streaming over IPC, prompt caching, usage/cost), Coach panel UI
-(report + chat), spend guardrails; iterate the prompt against real
-session/trends files. Deferred: code signing (Azure Trusted Signing), full
-auto-update via electron-updater (blocked on signing).
+implemented, unreleased: key via safeStorage ciphertext in userData/coach.key
+(deliberately NOT in config.json so the renderer can never see or clobber
+it); src/main/coach/client.ts calls the Anthropic API (claude-opus-4-8,
+adaptive thinking, streamed over coach:delta, top-level cache_control,
+usage→cost + monthly spend in userData/coach/spend.json, transcripts saved
+there too); prompts/coach-system.md is bundled into main via ?raw import;
+Coach tab (report + chat, per-response cost). Remaining before release:
+E2E with a real key (verify cache_read_input_tokens > 0 on chat turns),
+iterate the prompt on real sessions, decide the soft spend-warning UX.
+Deferred: code signing (Azure Trusted Signing), full auto-update via
+electron-updater (blocked on signing).

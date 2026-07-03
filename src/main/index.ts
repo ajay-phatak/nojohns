@@ -9,6 +9,7 @@ import { detectSlippi } from './slippi-detect'
 import { writeSessionNotes } from './notes/write'
 import type { TrendsData } from './notes/render'
 import { setKey, clearKey, keyStatus } from './coach/key'
+import { generateReport, chat, resetConversation, hasConversation } from './coach/client'
 
 function createWindow(): void {
   // Create the browser window.
@@ -231,6 +232,49 @@ app.whenReady().then(() => {
   ipcMain.handle('coach:setKey', (_e, key: string) => setKey(key))
   ipcMain.handle('coach:clearKey', () => clearKey())
   ipcMain.handle('coach:keyStatus', () => keyStatus())
+
+  // Coaching report on an archived session (default: newest). Deltas stream
+  // over coach:delta; the invoke resolves with the final result + usage/cost.
+  ipcMain.handle('coach:report', async (event, sessionFile?: string) => {
+    const sessionsDir = join(dataDir(), 'sessions')
+    let txtFile = sessionFile ? basename(sessionFile).replace(/\.json$/, '.txt') : null
+    if (!txtFile) {
+      try {
+        txtFile =
+          readdirSync(sessionsDir)
+            .filter((f) => f.endsWith('.txt'))
+            .sort()
+            .reverse()[0] ?? null
+      } catch {
+        txtFile = null
+      }
+    }
+    if (!txtFile) return { ok: false, reason: 'no_session' }
+    let sessionTxt: string
+    try {
+      sessionTxt = readFileSync(join(sessionsDir, txtFile), 'utf-8')
+    } catch {
+      return { ok: false, reason: 'no_session' }
+    }
+    let trendsTxt: string | null = null
+    try {
+      trendsTxt = readFileSync(join(dataDir(), 'trends.txt'), 'utf-8')
+    } catch {
+      // no trends yet
+    }
+    return generateReport(sessionTxt, trendsTxt, (text) => event.sender.send('coach:delta', text))
+  })
+
+  ipcMain.handle('coach:chat', (event, text: string) =>
+    chat(text, (t) => event.sender.send('coach:delta', t))
+  )
+
+  ipcMain.handle('coach:reset', () => {
+    resetConversation()
+    return true
+  })
+
+  ipcMain.handle('coach:hasConversation', () => hasConversation())
 
   ipcMain.handle('config:get', () => loadConfig())
   ipcMain.handle('config:set', (_e, patch: Partial<AppConfig>) => saveConfig(patch))

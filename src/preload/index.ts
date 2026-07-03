@@ -23,6 +23,16 @@ const api = {
   setCoachKey: (key: string): Promise<unknown> => ipcRenderer.invoke('coach:setKey', key),
   clearCoachKey: (): Promise<unknown> => ipcRenderer.invoke('coach:clearKey'),
   coachKeyStatus: (): Promise<unknown> => ipcRenderer.invoke('coach:keyStatus'),
+  coachReport: (sessionFile?: string): Promise<unknown> =>
+    ipcRenderer.invoke('coach:report', sessionFile),
+  coachChat: (text: string): Promise<unknown> => ipcRenderer.invoke('coach:chat', text),
+  coachReset: (): Promise<unknown> => ipcRenderer.invoke('coach:reset'),
+  coachHasConversation: (): Promise<unknown> => ipcRenderer.invoke('coach:hasConversation'),
+  onCoachDelta: (cb: (text: string) => void): (() => void) => {
+    const listener = (_: unknown, text: string): void => cb(text)
+    ipcRenderer.on('coach:delta', listener)
+    return () => ipcRenderer.removeListener('coach:delta', listener)
+  },
   pickNotesFolder: (): Promise<unknown> => ipcRenderer.invoke('notes:pickFolder'),
   openNote: (relPath: string): Promise<unknown> => ipcRenderer.invoke('notes:open', relPath),
   onEngineEvent: (cb: (e: Record<string, unknown>) => void): (() => void) => {
