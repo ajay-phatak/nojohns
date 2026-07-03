@@ -20,9 +20,19 @@ export const CHARACTERS: CharacterInfo[] = [
   { name: 'Jigglypuff', datasetDir: 'JIGGLYPUFF', token: 'Jigglypuff', engineName: 'jigglypuff' },
   { name: 'Falco', datasetDir: 'FALCO', token: 'Falco', engineName: 'falco' },
   { name: 'Sheik', datasetDir: 'ZELDA_SHEIK', token: 'Sheik', engineName: 'sheik' },
-  { name: 'Captain Falcon', datasetDir: 'CPTFALCON', token: 'Captain Falcon', engineName: 'captain_falcon' },
+  {
+    name: 'Captain Falcon',
+    datasetDir: 'CPTFALCON',
+    token: 'Captain Falcon',
+    engineName: 'captain_falcon'
+  },
   { name: 'Peach', datasetDir: 'PEACH', token: 'Peach', engineName: 'peach' },
-  { name: 'Ice Climbers', datasetDir: 'ICE_CLIMBERS', token: 'Ice Climbers', engineName: 'ice_climbers' },
+  {
+    name: 'Ice Climbers',
+    datasetDir: 'ICE_CLIMBERS',
+    token: 'Ice Climbers',
+    engineName: 'ice_climbers'
+  },
   { name: 'Dr. Mario', datasetDir: 'DOC', token: 'Dr. Mario', engineName: 'dr_mario' },
   { name: 'Donkey Kong', datasetDir: 'DK', token: 'Donkey Kong', engineName: 'donkey_kong' },
   { name: 'Pikachu', datasetDir: 'PIKACHU', token: 'Pikachu', engineName: 'pikachu' },
@@ -31,7 +41,12 @@ export const CHARACTERS: CharacterInfo[] = [
   { name: 'Luigi', datasetDir: 'LUIGI', token: 'Luigi', engineName: 'luigi' },
   { name: 'Ganondorf', datasetDir: 'GANONDORF', token: 'Ganondorf', engineName: 'ganondorf' },
   { name: 'Mewtwo', datasetDir: 'MEWTWO', token: 'Mewtwo', engineName: 'mewtwo' },
-  { name: 'Mr. Game & Watch', datasetDir: 'GAMEANDWATCH', token: 'Game', engineName: 'game_and_watch' },
+  {
+    name: 'Mr. Game & Watch',
+    datasetDir: 'GAMEANDWATCH',
+    token: 'Game',
+    engineName: 'game_and_watch'
+  },
   { name: 'Link', datasetDir: 'LINK', token: 'Link', engineName: 'link' },
   { name: 'Mario', datasetDir: 'MARIO', token: 'Mario', engineName: 'mario' },
   { name: 'Roy', datasetDir: 'ROY', token: 'Roy', engineName: 'roy' },

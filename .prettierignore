@@ -1,5 +1,7 @@
 out
 dist
+.venv*
+engine/dist
 pnpm-lock.yaml
 LICENSE.md
 tsconfig.json

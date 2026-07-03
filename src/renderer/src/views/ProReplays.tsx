@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppConfig, EngineEvent, ProDirStatus } from '../../../preload/index.d'
 import { charByName } from '../characters'
 
@@ -35,19 +35,18 @@ function buildRows(config: AppConfig): MatchupRow[] {
 const fmtMB = (bytes: number): string => `${(bytes / 1024 / 1024).toFixed(0)} MB`
 
 function ProReplays({ config }: { config: AppConfig }): React.JSX.Element {
-  const rows = buildRows(config)
+  const rows = useMemo(() => buildRows(config), [config])
   const [status, setStatus] = useState<Record<string, ProDirStatus>>({})
   const [fetching, setFetching] = useState<string | null>(null) // dirName
   const [progress, setProgress] = useState('')
 
-  const refresh = useCallback(async (): Promise<void> => {
-    const list = await window.api.proStatus(rows.map((r) => r.dirName))
-    setStatus(Object.fromEntries(list.map((s) => [s.name, s])))
-  }, [JSON.stringify(rows.map((r) => r.dirName))]) // eslint-disable-line react-hooks/exhaustive-deps
+  const refresh = useCallback((): void => {
+    window.api.proStatus(rows.map((r) => r.dirName)).then((list) => {
+      setStatus(Object.fromEntries(list.map((s) => [s.name, s])))
+    })
+  }, [rows])
 
-  useEffect(() => {
-    refresh()
-  }, [refresh])
+  useEffect(refresh, [refresh])
 
   useEffect(
     () =>
@@ -100,7 +99,9 @@ function ProReplays({ config }: { config: AppConfig }): React.JSX.Element {
                 <td style={{ padding: 8 }}>
                   {busy ? (
                     <>
-                      <span style={{ color: '#8fc', fontSize: 12, marginRight: 8 }}>{progress}</span>
+                      <span style={{ color: '#8fc', fontSize: 12, marginRight: 8 }}>
+                        {progress}
+                      </span>
                       <button onClick={() => window.api.cancelFetch()}>Cancel</button>
                     </>
                   ) : (

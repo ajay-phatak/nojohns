@@ -162,8 +162,8 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
             ))}
           </div>
           <p style={{ fontSize: 13, color: '#aaa', marginTop: 8 }}>
-            You can download pro replays for these matchups from the dashboard — highly
-            recommended, it&apos;s what powers the you-vs-pros comparison.
+            You can download pro replays for these matchups from the dashboard — highly recommended,
+            it&apos;s what powers the you-vs-pros comparison.
           </p>
           <div style={{ marginTop: 12 }}>
             <button onClick={() => setStep(2)}>Back</button>{' '}
