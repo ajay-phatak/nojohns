@@ -15,9 +15,13 @@ Point No Johns at your Slippi replay folder and it:
 
 Tiers 1–2 require no accounts, no keys, nothing but your replays.
 
-## Status
+## Download
 
-🚧 **Early development — not yet released.** Windows first; Mac/Linux planned. Watch/star the repo for the first release.
+**[⬇ Get the latest release (Windows)](https://github.com/ajay-phatak/nojohns/releases/latest)** — download the `-setup.exe` under Assets and run it.
+
+> **Windows SmartScreen note:** the installer isn't code-signed yet, so Windows will warn about an unknown publisher. Click **More info → Run anyway**. Signing is planned.
+
+Early release — Mac/Linux planned. If something breaks, [open an issue](https://github.com/ajay-phatak/nojohns/issues).
 
 ## Architecture (for the curious)
 
