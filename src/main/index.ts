@@ -184,38 +184,78 @@ app.whenReady().then(() => {
     }
   }
 
+  // Newest archived session json name, or the given one normalized.
+  const resolveSessionJson = (sessionFile?: string): string | null => {
+    if (sessionFile) return basename(sessionFile)
+    try {
+      return (
+        readdirSync(join(dataDir(), 'sessions'))
+          .filter((f) => f.endsWith('.json'))
+          .sort()
+          .reverse()[0] ?? null
+      )
+    } catch {
+      return null
+    }
+  }
+
   // Render + write the notes tier for one archived session (default: newest).
-  // Shared by the notes:write handler and the post-analysis auto-write.
+  // Shared by notes:write, notes:writeAi, and the post-analysis auto-write.
   const writeNotesFor = (
-    sessionFile?: string
+    sessionFile?: string,
+    coachReport: string | null = null
   ): { ok: boolean; reason?: string; written?: string[]; unchanged?: string[] } => {
     const config = loadConfig()
     if (!config.notesFolder) return { ok: false, reason: 'no_folder' }
-    const sessionsDir = join(dataDir(), 'sessions')
-    let file = sessionFile ? basename(sessionFile) : null
-    if (!file) {
-      try {
-        file =
-          readdirSync(sessionsDir)
-            .filter((f) => f.endsWith('.json'))
-            .sort()
-            .reverse()[0] ?? null
-      } catch {
-        file = null
-      }
-    }
+    const file = resolveSessionJson(sessionFile)
     if (!file) return { ok: false, reason: 'no_session' }
-    const session = readJsonOrNull<Parameters<typeof writeSessionNotes>[1]>(join(sessionsDir, file))
+    const session = readJsonOrNull<Parameters<typeof writeSessionNotes>[1]>(
+      join(dataDir(), 'sessions', file)
+    )
     if (!session) return { ok: false, reason: 'bad_session' }
     const trends = readJsonOrNull<TrendsData>(join(dataDir(), 'trends.json'))
     try {
-      return { ok: true, ...writeSessionNotes(config.notesFolder, session, trends) }
+      return { ok: true, ...writeSessionNotes(config.notesFolder, session, trends, coachReport) }
     } catch (err) {
       return { ok: false, reason: String(err) }
     }
   }
 
   ipcMain.handle('notes:write', (_e, sessionFile?: string) => writeNotesFor(sessionFile))
+
+  // AI notes: generate a coaching report through the configured backend, then
+  // write the notes with the report embedded as the session note's coach
+  // block. Deltas stream over coach:delta for progress display.
+  ipcMain.handle('notes:writeAi', async (event, sessionFile?: string) => {
+    const config = loadConfig()
+    if (!config.notesFolder) return { ok: false, reason: 'no_folder' }
+    const file = resolveSessionJson(sessionFile)
+    if (!file) return { ok: false, reason: 'no_session' }
+    let sessionTxt: string
+    try {
+      sessionTxt = readFileSync(
+        join(dataDir(), 'sessions', file.replace(/\.json$/, '.txt')),
+        'utf-8'
+      )
+    } catch {
+      return { ok: false, reason: 'no_session' }
+    }
+    let trendsTxt: string | null = null
+    try {
+      trendsTxt = readFileSync(join(dataDir(), 'trends.txt'), 'utf-8')
+    } catch {
+      // no trends yet
+    }
+    const onDelta = (t: string): void => event.sender.send('coach:delta', t)
+    const report =
+      config.coachBackend === 'claude-cli'
+        ? await cliGenerateReport(sessionTxt, trendsTxt, config.coachModel, onDelta)
+        : await generateReport(sessionTxt, trendsTxt, config.coachModel, onDelta)
+    if (!report.ok || !report.text) {
+      return { ok: false, reason: report.reason ?? 'coach_failed' }
+    }
+    return { ...writeNotesFor(file, report.text), usage: report.usage }
+  })
 
   ipcMain.handle('notes:pickFolder', async () => {
     const r = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })

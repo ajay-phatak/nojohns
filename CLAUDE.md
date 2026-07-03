@@ -42,7 +42,9 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
   never a data store. Generated regions sit between `<!-- nojohns:begin/end -->`
   sentinels; everything outside is user text and must survive rewrites
   byte-for-byte. `notes/format.ts` mirrors coach.py's render_trends one-liners —
-  keep them in sync when the engine's renderer changes.
+  keep them in sync when the engine's renderer changes. The AI report is the
+  session note's `coach` block (notes:writeAi): only present in the template
+  when a fresh report was generated, so plain rewrites never clobber it.
 
 ## Gotchas
 

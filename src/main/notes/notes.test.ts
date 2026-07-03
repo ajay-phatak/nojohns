@@ -267,4 +267,34 @@ describe('writeSessionNotes', () => {
     const sessionNote = readFileSync(join(vault, 'Sessions', '2026-07-01.md'), 'utf-8')
     expect(sessionNote).toContain('Sheik vs Fox')
   })
+
+  it('embeds an AI coach report as its own block, preserved by plain rewrites', () => {
+    const path = join(vault, 'Sessions', '2026-07-01.md')
+    // AI write adds the coach block
+    writeSessionNotes(vault, session, trends, 'Focus on shine OOS when Fox nairs your shield.')
+    let note = readFileSync(path, 'utf-8')
+    expect(note).toContain('<!-- nojohns:begin coach -->')
+    expect(note).toContain("## Coach's read")
+    expect(note).toContain('Focus on shine OOS')
+    // Plain rewrite (no report) leaves the coach block untouched
+    const res = writeSessionNotes(vault, session, trends)
+    expect(res.written).toHaveLength(0)
+    // A fresh AI write replaces the coach block, not duplicates it
+    writeSessionNotes(vault, session, trends, 'New advice: stop rolling in from ledge.')
+    note = readFileSync(path, 'utf-8')
+    expect(note).toContain('stop rolling in from ledge')
+    expect(note).not.toContain('Focus on shine OOS')
+    expect(note.match(/nojohns:begin coach/g)).toHaveLength(1)
+  })
+
+  it('adds the coach block to a note that predates the feature, after user text', () => {
+    writeSessionNotes(vault, session, trends) // note exists without coach block
+    const path = join(vault, 'Sessions', '2026-07-01.md')
+    const edited = readFileSync(path, 'utf-8').replace('- \n', '- my own observation\n')
+    writeFileSync(path, edited)
+    writeSessionNotes(vault, session, trends, 'AI advice arrives later.')
+    const note = readFileSync(path, 'utf-8')
+    expect(note).toContain('my own observation')
+    expect(note).toContain('AI advice arrives later.')
+  })
 })

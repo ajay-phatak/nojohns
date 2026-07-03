@@ -38,6 +38,7 @@ export interface NotesResult {
   reason?: string
   written?: string[]
   unchanged?: string[]
+  usage?: CoachUsage
 }
 
 export interface AnalyzeSessionResult {
@@ -113,6 +114,7 @@ export interface NoJohnsApi {
   getTrends: () => Promise<Record<string, unknown> | null>
   doctor: (folder: string, code: string) => Promise<DoctorResult>
   writeNotes: (sessionFile?: string) => Promise<NotesResult>
+  writeNotesAi: (sessionFile?: string) => Promise<NotesResult>
   pickNotesFolder: () => Promise<string | null>
   openNote: (relPath: string) => Promise<{ ok: boolean; reason?: string }>
   setCoachKey: (key: string) => Promise<{ ok: boolean; reason?: string }>

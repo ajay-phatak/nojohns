@@ -75,7 +75,8 @@ function fallbackMatchup(sets: SetRecord[]): MatchupTrend {
 export function writeSessionNotes(
   notesFolder: string,
   session: SessionData,
-  trends: TrendsData | null
+  trends: TrendsData | null,
+  coachReport: string | null = null
 ): NotesWriteResult {
   const res: NotesWriteResult = { written: [], unchanged: [] }
   const sessionsDir = join(notesFolder, 'Sessions')
@@ -87,7 +88,7 @@ export function writeSessionNotes(
   for (const [date, sets] of groupBy(session.sets, (s) => s.session_date)) {
     const path = join(sessionsDir, `${safeName(date)}.md`)
     const existing = readOrNull(path)
-    const merged = mergeNote(existing, sessionNoteTemplate(date, sets, trends))
+    const merged = mergeNote(existing, sessionNoteTemplate(date, sets, trends, coachReport))
     writeIfChanged(path, mergeFrontmatter(merged, sessionFrontmatter(date, sets)), res)
   }
 

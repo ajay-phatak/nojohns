@@ -167,13 +167,27 @@ function setSection(set: SetRecord, trends: TrendsData | null): string {
 export function sessionNoteTemplate(
   date: string,
   sets: SetRecord[],
-  trends: TrendsData | null
+  trends: TrendsData | null,
+  coachReport?: string | null
 ): NotePart[] {
   const body = [`# Session ${date}`, ...sets.map((s) => setSection(s, trends))].join('\n\n')
-  return [
-    { kind: 'block', id: 'session', body },
-    { kind: 'text', text: NOTES_SEED }
-  ]
+  const parts: NotePart[] = [{ kind: 'block', id: 'session', body }]
+  // The coach block only appears in the template when a fresh AI report was
+  // generated — plain rewrites leave any existing coach block untouched
+  // (mergeNote only replaces blocks present in the template).
+  if (coachReport) {
+    parts.push({
+      kind: 'text',
+      text: ''
+    })
+    parts.push({
+      kind: 'block',
+      id: 'coach',
+      body: `## Coach's read\n\n${coachReport.trim()}`
+    })
+  }
+  parts.push({ kind: 'text', text: NOTES_SEED })
+  return parts
 }
 
 // ---------------------------------------------------------------------------
