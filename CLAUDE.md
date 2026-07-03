@@ -9,6 +9,8 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
   preload changes don't restart Electron and the window calls IPC handlers
   that don't exist yet (symptom: blank screen).
 - `npm run typecheck` — run after any TS change.
+- `npm test` — vitest; covers the notes tier (sentinel merge idempotency +
+  user-text preservation).
 - `scripts/build-engine.ps1` — PyInstaller build → `engine/dist/nojohns-engine/`.
   Pinned to Python 3.12 (py-slippi is not validated on newer). Dev engine venv
   lives at `.venv/` (created manually, not by this script).
@@ -36,6 +38,11 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
   the player's metrics — keep both sides of the comparison on one code path.
 - Renderer never sees secrets or spawns processes; all engine/IPC work is in
   `src/main/`, typed in `src/preload/index.d.ts`.
+- Notes (`src/main/notes/`) are regenerable views over session/trends JSON —
+  never a data store. Generated regions sit between `<!-- nojohns:begin/end -->`
+  sentinels; everything outside is user text and must survive rewrites
+  byte-for-byte. `notes/format.ts` mirrors coach.py's render_trends one-liners —
+  keep them in sync when the engine's renderer changes.
 
 ## Gotchas
 
@@ -55,8 +62,9 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
 
 ## Roadmap state
 
-Tier 1 (stats vs pros) shipped as v0.1.1. Next: Phase B — notes tier
-(markdown stubs to any folder, user text preserved between sentinel
-comments); Phase C — AI coach tier (Anthropic API key via safeStorage,
-report + chat). Deferred: code signing (Azure Trusted Signing), full
-auto-update via electron-updater (blocked on signing).
+Tier 1 (stats vs pros) shipped as v0.1.1. Phase B (notes tier) implemented,
+unreleased: Sessions/Matchups/Progress markdown into any folder, sentinel-
+preserved user text, folder picker + auto-write toggle in Settings. Next:
+Phase C — AI coach tier (Anthropic API key via safeStorage, report + chat).
+Deferred: code signing (Azure Trusted Signing), full auto-update via
+electron-updater (blocked on signing).

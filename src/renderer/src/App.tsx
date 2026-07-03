@@ -41,7 +41,8 @@ function App(): React.JSX.Element {
           <a href={update.url} target="_blank" rel="noreferrer" style={{ color: '#7bf' }}>
             download it here
           </a>
-          . <button style={{ marginLeft: 8, fontSize: 12 }} onClick={() => setUpdate(null)}>
+          .{' '}
+          <button style={{ marginLeft: 8, fontSize: 12 }} onClick={() => setUpdate(null)}>
             Dismiss
           </button>
         </div>
@@ -63,7 +64,7 @@ function App(): React.JSX.Element {
         ))}
       </nav>
       {view === 'Dashboard' && <Dashboard config={config} />}
-      {view === 'Matchups' && <Matchups />}
+      {view === 'Matchups' && <Matchups config={config} />}
       {view === 'Pro Replays' && <ProReplays config={config} />}
       {view === 'Settings' && <Settings config={config} onSaved={setConfig} />}
     </div>

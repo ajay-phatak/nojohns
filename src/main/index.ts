@@ -1,11 +1,13 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
-import { readFileSync, mkdirSync, readdirSync, statSync } from 'fs'
+import { app, shell, dialog, BrowserWindow, ipcMain } from 'electron'
+import { join, resolve, basename } from 'path'
+import { readFileSync, mkdirSync, readdirSync, statSync, existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { EngineJob, EngineEvent } from './engine'
 import { loadConfig, saveConfig, dataDir, AppConfig } from './config'
 import { detectSlippi } from './slippi-detect'
+import { writeSessionNotes } from './notes/write'
+import type { TrendsData } from './notes/render'
 
 function createWindow(): void {
   // Create the browser window.
@@ -88,15 +90,27 @@ app.whenReady().then(() => {
   let activeFetch: EngineJob | null = null
   ipcMain.handle(
     'engine:fetch',
-    async (event, opts: { datasetDir: string; token: string; outDirName: string; limit: number }) => {
+    async (
+      event,
+      opts: { datasetDir: string; token: string; outDirName: string; limit: number }
+    ) => {
       if (activeFetch) return { ok: false, reason: 'busy' }
       const outDir = join(dataDir(), 'pro_replays', opts.outDirName)
       let result: EngineEvent | null = null
       activeFetch = new EngineJob()
       try {
         const exitCode = await activeFetch.run(
-          ['fetch', '--matchup', `${opts.datasetDir}/${opts.token}`, '--out', outDir,
-           '--data-dir', dataDir(), '--limit', String(opts.limit)],
+          [
+            'fetch',
+            '--matchup',
+            `${opts.datasetDir}/${opts.token}`,
+            '--out',
+            outDir,
+            '--data-dir',
+            dataDir(),
+            '--limit',
+            String(opts.limit)
+          ],
           (e: EngineEvent) => {
             if (e.event === 'result') result = e
             event.sender.send('engine:event', e)
@@ -146,13 +160,69 @@ app.whenReady().then(() => {
       const latest = (rel.tag_name ?? '').replace(/^v/, '')
       const toParts = (v: string): number[] => v.split('.').map((n) => parseInt(n, 10) || 0)
       const [c, l] = [toParts(current), toParts(latest)]
-      const newer =
-        latest !== '' &&
-        (l[0] - c[0] || l[1] - c[1] || l[2] - c[2]) > 0
+      const newer = latest !== '' && (l[0] - c[0] || l[1] - c[1] || l[2] - c[2]) > 0
       return { current, latest, newer, url: rel.html_url }
     } catch {
       return { current, latest: null, newer: false }
     }
+  })
+
+  const readJsonOrNull = <T>(path: string): T | null => {
+    try {
+      return JSON.parse(readFileSync(path, 'utf-8'))
+    } catch {
+      return null
+    }
+  }
+
+  // Render + write the notes tier for one archived session (default: newest).
+  // Shared by the notes:write handler and the post-analysis auto-write.
+  const writeNotesFor = (
+    sessionFile?: string
+  ): { ok: boolean; reason?: string; written?: string[]; unchanged?: string[] } => {
+    const config = loadConfig()
+    if (!config.notesFolder) return { ok: false, reason: 'no_folder' }
+    const sessionsDir = join(dataDir(), 'sessions')
+    let file = sessionFile ? basename(sessionFile) : null
+    if (!file) {
+      try {
+        file =
+          readdirSync(sessionsDir)
+            .filter((f) => f.endsWith('.json'))
+            .sort()
+            .reverse()[0] ?? null
+      } catch {
+        file = null
+      }
+    }
+    if (!file) return { ok: false, reason: 'no_session' }
+    const session = readJsonOrNull<Parameters<typeof writeSessionNotes>[1]>(join(sessionsDir, file))
+    if (!session) return { ok: false, reason: 'bad_session' }
+    const trends = readJsonOrNull<TrendsData>(join(dataDir(), 'trends.json'))
+    try {
+      return { ok: true, ...writeSessionNotes(config.notesFolder, session, trends) }
+    } catch (err) {
+      return { ok: false, reason: String(err) }
+    }
+  }
+
+  ipcMain.handle('notes:write', (_e, sessionFile?: string) => writeNotesFor(sessionFile))
+
+  ipcMain.handle('notes:pickFolder', async () => {
+    const r = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+    return r.canceled ? null : r.filePaths[0]
+  })
+
+  // Open a note (path relative to the notes folder) in the OS default editor.
+  ipcMain.handle('notes:open', (_e, relPath: string) => {
+    const config = loadConfig()
+    if (!config.notesFolder) return { ok: false, reason: 'no_folder' }
+    const base = resolve(config.notesFolder)
+    const full = resolve(base, relPath)
+    if (!full.startsWith(base)) return { ok: false, reason: 'bad_path' }
+    if (!existsSync(full)) return { ok: false, reason: 'missing' }
+    shell.openPath(full)
+    return { ok: true }
   })
 
   ipcMain.handle('config:get', () => loadConfig())
@@ -174,27 +244,56 @@ app.whenReady().then(() => {
     const forward = (e: EngineEvent): void => event.sender.send('engine:event', e)
 
     const analyze = await new EngineJob().run(
-      ['analyze', config.replayFolder, '--code', config.connectCode,
-       '--sets', String(opts.sets), '--singles-only', '--pool-matchups',
-       '--json', jsonPath, '--out', join(sessionsDir, `session-${stamp}.txt`),
-       '--data-dir', dataDir()],
+      [
+        'analyze',
+        config.replayFolder,
+        '--code',
+        config.connectCode,
+        '--sets',
+        String(opts.sets),
+        '--singles-only',
+        '--pool-matchups',
+        '--json',
+        jsonPath,
+        '--out',
+        join(sessionsDir, `session-${stamp}.txt`),
+        '--data-dir',
+        dataDir()
+      ],
       forward
     )
     if (analyze !== 0) return { ok: false, reason: 'analyze_failed' }
 
     const ingest = await new EngineJob().run(
-      ['ingest', jsonPath, '--history', historyPath], forward)
+      ['ingest', jsonPath, '--history', historyPath],
+      forward
+    )
     if (ingest !== 0) return { ok: false, reason: 'ingest_failed' }
 
     const trends = await new EngineJob().run(
-      ['trends', '--history', historyPath, '--out', join(dataDir(), 'trends.txt'),
-       '--json', trendsJson], forward)
+      [
+        'trends',
+        '--history',
+        historyPath,
+        '--out',
+        join(dataDir(), 'trends.txt'),
+        '--json',
+        trendsJson
+      ],
+      forward
+    )
     if (trends !== 0) return { ok: false, reason: 'trends_failed' }
+
+    // Notes are a side output — never fail the analysis over them.
+    const sessionFile = `session-${stamp}.json`
+    const notes = config.notesFolder && config.autoWriteNotes ? writeNotesFor(sessionFile) : null
 
     return {
       ok: true,
+      file: sessionFile,
       session: JSON.parse(readFileSync(jsonPath, 'utf-8')),
-      trends: JSON.parse(readFileSync(trendsJson, 'utf-8'))
+      trends: JSON.parse(readFileSync(trendsJson, 'utf-8')),
+      notes
     }
   })
 

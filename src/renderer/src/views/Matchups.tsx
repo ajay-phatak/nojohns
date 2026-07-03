@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { AppConfig } from '../../../preload/index.d'
 
 interface MatchupSummary {
   wins: number
@@ -43,9 +44,21 @@ const HEADLINE_LABELS: Record<string, string> = {
   kill_rate_pct: 'Kill rate %'
 }
 
-function Matchups(): React.JSX.Element {
+function Matchups({ config }: { config: AppConfig }): React.JSX.Element {
   const [trends, setTrends] = useState<Trends | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [noteError, setNoteError] = useState('')
+
+  const openNote = async (name: string): Promise<void> => {
+    const res = await window.api.openNote(`Matchups/${name}.md`)
+    setNoteError(
+      res.ok
+        ? ''
+        : res.reason === 'missing'
+          ? 'No note yet — write notes from a session report first.'
+          : `Could not open note (${res.reason ?? 'unknown'}).`
+    )
+  }
 
   useEffect(() => {
     window.api.getTrends().then((t) => {
@@ -74,6 +87,7 @@ function Matchups(): React.JSX.Element {
       <p style={{ color: '#888', fontSize: 13 }}>
         {trends.n_sets} sets over {trends.n_sessions} sessions, most-played first.
       </p>
+      {noteError && <p style={{ color: '#c94', fontSize: 13 }}>{noteError}</p>}
       {sorted.map(([name, mu]) => {
         const gp = mu.gameplan ?? {}
         return (
@@ -89,6 +103,14 @@ function Matchups(): React.JSX.Element {
               <span style={{ color: '#888', fontWeight: 'normal', fontSize: 14 }}>
                 · {mu.games} games · {mu.sessions} session(s)
               </span>
+              {config.notesFolder && (
+                <button
+                  onClick={() => openNote(name)}
+                  style={{ marginLeft: 12, fontSize: 12, padding: '2px 8px' }}
+                >
+                  Open note
+                </button>
+              )}
             </h3>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
               {Object.entries(HEADLINE_LABELS).map(([key, label]) =>

@@ -18,6 +18,10 @@ const api = {
   fetchPros: (opts: Record<string, unknown>): Promise<unknown> =>
     ipcRenderer.invoke('engine:fetch', opts),
   cancelFetch: (): Promise<unknown> => ipcRenderer.invoke('engine:cancelFetch'),
+  writeNotes: (sessionFile?: string): Promise<unknown> =>
+    ipcRenderer.invoke('notes:write', sessionFile),
+  pickNotesFolder: (): Promise<unknown> => ipcRenderer.invoke('notes:pickFolder'),
+  openNote: (relPath: string): Promise<unknown> => ipcRenderer.invoke('notes:open', relPath),
   onEngineEvent: (cb: (e: Record<string, unknown>) => void): (() => void) => {
     const listener = (_: unknown, e: Record<string, unknown>): void => cb(e)
     ipcRenderer.on('engine:event', listener)

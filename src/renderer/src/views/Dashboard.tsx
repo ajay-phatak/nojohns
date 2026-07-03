@@ -1,10 +1,5 @@
 import { useEffect, useState } from 'react'
-import type {
-  AppConfig,
-  EngineEvent,
-  SessionSummary,
-  SetRecord
-} from '../../../preload/index.d'
+import type { AppConfig, EngineEvent, SessionSummary, SetRecord } from '../../../preload/index.d'
 import SessionReport from './SessionReport'
 
 function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
@@ -12,7 +7,7 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
-  const [open, setOpen] = useState<{ title: string; sets: SetRecord[] } | null>(null)
+  const [open, setOpen] = useState<{ title: string; sets: SetRecord[]; file?: string } | null>(null)
   const [sets, setSets] = useState(2)
 
   const refresh = (): void => {
@@ -38,7 +33,7 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
     try {
       const res = await window.api.analyzeSession({ sets })
       if (res.ok && res.session) {
-        setOpen({ title: 'Latest session', sets: res.session.sets })
+        setOpen({ title: 'Latest session', sets: res.session.sets, file: res.file })
       } else {
         setError(`Analysis failed (${res.reason ?? 'unknown'}) — check the logs.`)
       }
@@ -50,7 +45,15 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
   }
 
   if (open) {
-    return <SessionReport title={open.title} sets={open.sets} onBack={() => setOpen(null)} />
+    return (
+      <SessionReport
+        title={open.title}
+        sets={open.sets}
+        sessionFile={open.file}
+        notesConfigured={!!config.notesFolder}
+        onBack={() => setOpen(null)}
+      />
+    )
   }
 
   return (
@@ -78,6 +81,23 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
       </div>
       {error && <p style={{ color: '#f88' }}>{error}</p>}
 
+      {!config.notesFolder && (
+        <div
+          style={{
+            border: '1px dashed #444',
+            borderRadius: 8,
+            padding: 12,
+            marginBottom: 16,
+            color: '#888',
+            fontSize: 13
+          }}
+        >
+          📝 <strong style={{ color: '#aaa' }}>Notes</strong> — point No Johns at a folder (an
+          Obsidian vault works) in Settings and it writes markdown notes per session and matchup,
+          with room for your own observations.
+        </div>
+      )}
+
       <h3>Recent sessions</h3>
       {sessions.length === 0 && (
         <p style={{ color: '#888' }}>None yet — hit Analyze after a session of netplay.</p>
@@ -89,7 +109,7 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
         return (
           <div
             key={s.file}
-            onClick={() => setOpen({ title: s.generated_at, sets: s.sets })}
+            onClick={() => setOpen({ title: s.generated_at, sets: s.sets, file: s.file })}
             style={{
               border: '1px solid #333',
               borderRadius: 8,

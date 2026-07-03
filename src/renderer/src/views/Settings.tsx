@@ -49,14 +49,23 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
   const [code, setCode] = useState(config.connectCode ?? '')
   const [mains, setMains] = useState(config.mainCharacters)
   const [matchups, setMatchups] = useState(config.matchups)
+  const [notesFolder, setNotesFolder] = useState(config.notesFolder ?? '')
+  const [autoWrite, setAutoWrite] = useState(config.autoWriteNotes)
   const [saved, setSaved] = useState(false)
+
+  const browseNotes = async (): Promise<void> => {
+    const picked = await window.api.pickNotesFolder()
+    if (picked) setNotesFolder(picked)
+  }
 
   const save = async (): Promise<void> => {
     const next = await window.api.setConfig({
       replayFolder: folder,
       connectCode: code,
       mainCharacters: mains,
-      matchups
+      matchups,
+      notesFolder: notesFolder || null,
+      autoWriteNotes: autoWrite
     })
     onSaved(next)
     setSaved(true)
@@ -68,7 +77,11 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
       <h2>Settings</h2>
 
       <h4>Slippi replay folder</h4>
-      <input style={{ width: '100%', padding: 6 }} value={folder} onChange={(e) => setFolder(e.target.value)} />
+      <input
+        style={{ width: '100%', padding: 6 }}
+        value={folder}
+        onChange={(e) => setFolder(e.target.value)}
+      />
 
       <h4>Connect code</h4>
       <input
@@ -82,6 +95,30 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
 
       <h4>Common opponents — up to 8</h4>
       <TogglePicker selected={matchups} cap={8} color="#2a6" onChange={setMatchups} />
+
+      <h4>Notes folder</h4>
+      <p style={{ color: '#888', fontSize: 13, marginTop: -8 }}>
+        Any folder works — point it at an Obsidian vault to get session, matchup, and progress notes
+        there. Your own text in the notes is preserved when they regenerate.
+      </p>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          style={{ flex: 1, padding: 6 }}
+          value={notesFolder}
+          placeholder="No folder set — notes disabled"
+          onChange={(e) => setNotesFolder(e.target.value)}
+        />
+        <button onClick={browseNotes}>Browse…</button>
+      </div>
+      <label style={{ display: 'block', marginTop: 8, fontSize: 13, color: '#aaa' }}>
+        <input
+          type="checkbox"
+          checked={autoWrite}
+          disabled={!notesFolder}
+          onChange={(e) => setAutoWrite(e.target.checked)}
+        />{' '}
+        Write notes automatically after each analysis
+      </label>
 
       <div style={{ marginTop: 16 }}>
         <button disabled={!folder || !code || mains.length === 0} onClick={save}>

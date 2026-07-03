@@ -33,11 +33,20 @@ export interface SessionData {
   sets: SetRecord[]
 }
 
+export interface NotesResult {
+  ok: boolean
+  reason?: string
+  written?: string[]
+  unchanged?: string[]
+}
+
 export interface AnalyzeSessionResult {
   ok: boolean
   reason?: string
+  file?: string
   session?: SessionData
   trends?: Record<string, unknown>
+  notes?: NotesResult | null
 }
 
 export interface SessionSummary {
@@ -52,6 +61,7 @@ export interface AppConfig {
   mainCharacters: string[]
   matchups: string[]
   notesFolder: string | null
+  autoWriteNotes: boolean
   onboarded: boolean
 }
 
@@ -98,6 +108,9 @@ export interface NoJohnsApi {
   listSessions: () => Promise<SessionSummary[]>
   getTrends: () => Promise<Record<string, unknown> | null>
   doctor: (folder: string, code: string) => Promise<DoctorResult>
+  writeNotes: (sessionFile?: string) => Promise<NotesResult>
+  pickNotesFolder: () => Promise<string | null>
+  openNote: (relPath: string) => Promise<{ ok: boolean; reason?: string }>
   onEngineEvent: (cb: (e: EngineEvent) => void) => () => void
 }
 

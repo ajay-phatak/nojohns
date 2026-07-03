@@ -8,6 +8,7 @@ export interface AppConfig {
   mainCharacters: string[] // one or more mains, e.g. ["Sheik", "Fox"]
   matchups: string[] // opponent characters, e.g. ["Fox", "Falco", "Marth"]
   notesFolder: string | null
+  autoWriteNotes: boolean // write notes automatically after each analysis
   onboarded: boolean
 }
 
@@ -17,6 +18,7 @@ const DEFAULTS: AppConfig = {
   mainCharacters: [],
   matchups: [],
   notesFolder: null,
+  autoWriteNotes: false,
   onboarded: false
 }
 

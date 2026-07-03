@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { SetRecord } from '../../../preload/index.d'
 import { HEADLINE_METRICS } from '../metrics'
 
@@ -85,15 +86,45 @@ function SetCard({ set }: { set: SetRecord }): React.JSX.Element {
 function SessionReport({
   sets,
   title,
-  onBack
+  onBack,
+  sessionFile,
+  notesConfigured
 }: {
   sets: SetRecord[]
   title: string
   onBack: () => void
+  sessionFile?: string
+  notesConfigured?: boolean
 }): React.JSX.Element {
+  const [notesStatus, setNotesStatus] = useState('')
+
+  const writeNotes = async (): Promise<void> => {
+    setNotesStatus('Writing…')
+    const res = await window.api.writeNotes(sessionFile)
+    if (res.ok) {
+      const n = res.written?.length ?? 0
+      setNotesStatus(n > 0 ? `Notes written (${n} file${n === 1 ? '' : 's'})` : 'Notes up to date')
+    } else {
+      setNotesStatus(`Notes failed: ${res.reason ?? 'unknown'}`)
+    }
+  }
+
   return (
     <div>
-      <button onClick={onBack}>← Dashboard</button>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button onClick={onBack}>← Dashboard</button>
+        {notesConfigured && <button onClick={writeNotes}>Write notes</button>}
+        {notesStatus && (
+          <span
+            style={{
+              fontSize: 13,
+              color: notesStatus.startsWith('Notes failed') ? '#f88' : '#6e9'
+            }}
+          >
+            {notesStatus}
+          </span>
+        )}
+      </div>
       <h2>{title}</h2>
       {sets.map((s, i) => (
         <SetCard key={i} set={s} />
