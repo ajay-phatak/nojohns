@@ -111,7 +111,15 @@ export interface NoJohnsApi {
   writeNotes: (sessionFile?: string) => Promise<NotesResult>
   pickNotesFolder: () => Promise<string | null>
   openNote: (relPath: string) => Promise<{ ok: boolean; reason?: string }>
+  setCoachKey: (key: string) => Promise<{ ok: boolean; reason?: string }>
+  clearCoachKey: () => Promise<{ ok: boolean }>
+  coachKeyStatus: () => Promise<CoachKeyStatus>
   onEngineEvent: (cb: (e: EngineEvent) => void) => () => void
+}
+
+export interface CoachKeyStatus {
+  configured: boolean
+  last4?: string
 }
 
 export interface DoctorResult {

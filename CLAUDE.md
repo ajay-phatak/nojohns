@@ -62,9 +62,12 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
 
 ## Roadmap state
 
-Tier 1 (stats vs pros) shipped as v0.1.1. Phase B (notes tier) implemented,
-unreleased: Sessions/Matchups/Progress markdown into any folder, sentinel-
-preserved user text, folder picker + auto-write toggle in Settings. Next:
-Phase C — AI coach tier (Anthropic API key via safeStorage, report + chat).
-Deferred: code signing (Azure Trusted Signing), full auto-update via
-electron-updater (blocked on signing).
+Tier 1 shipped as v0.1.1; tier 2 (notes) shipped as v0.2.0. Phase C (AI coach)
+in progress: API key plumbing done (safeStorage ciphertext in userData/
+coach.key — deliberately NOT in config.json so the renderer can never see or
+clobber it; coach:setKey/clearKey/keyStatus IPC; Settings UI), coach system
+prompt drafted at prompts/coach-system.md. Remaining: Anthropic client in
+main (streaming over IPC, prompt caching, usage/cost), Coach panel UI
+(report + chat), spend guardrails; iterate the prompt against real
+session/trends files. Deferred: code signing (Azure Trusted Signing), full
+auto-update via electron-updater (blocked on signing).

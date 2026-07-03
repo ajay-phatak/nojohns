@@ -8,6 +8,7 @@ import { loadConfig, saveConfig, dataDir, AppConfig } from './config'
 import { detectSlippi } from './slippi-detect'
 import { writeSessionNotes } from './notes/write'
 import type { TrendsData } from './notes/render'
+import { setKey, clearKey, keyStatus } from './coach/key'
 
 function createWindow(): void {
   // Create the browser window.
@@ -224,6 +225,12 @@ app.whenReady().then(() => {
     shell.openPath(full)
     return { ok: true }
   })
+
+  // Coach API key: plaintext crosses IPC only inbound (set); status returns
+  // configured + last4, never the key itself.
+  ipcMain.handle('coach:setKey', (_e, key: string) => setKey(key))
+  ipcMain.handle('coach:clearKey', () => clearKey())
+  ipcMain.handle('coach:keyStatus', () => keyStatus())
 
   ipcMain.handle('config:get', () => loadConfig())
   ipcMain.handle('config:set', (_e, patch: Partial<AppConfig>) => saveConfig(patch))

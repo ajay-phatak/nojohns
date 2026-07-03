@@ -20,6 +20,9 @@ const api = {
   cancelFetch: (): Promise<unknown> => ipcRenderer.invoke('engine:cancelFetch'),
   writeNotes: (sessionFile?: string): Promise<unknown> =>
     ipcRenderer.invoke('notes:write', sessionFile),
+  setCoachKey: (key: string): Promise<unknown> => ipcRenderer.invoke('coach:setKey', key),
+  clearCoachKey: (): Promise<unknown> => ipcRenderer.invoke('coach:clearKey'),
+  coachKeyStatus: (): Promise<unknown> => ipcRenderer.invoke('coach:keyStatus'),
   pickNotesFolder: (): Promise<unknown> => ipcRenderer.invoke('notes:pickFolder'),
   openNote: (relPath: string): Promise<unknown> => ipcRenderer.invoke('notes:open', relPath),
   onEngineEvent: (cb: (e: Record<string, unknown>) => void): (() => void) => {

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import type { AppConfig } from '../../../preload/index.d'
+import { useEffect, useState } from 'react'
+import type { AppConfig, CoachKeyStatus } from '../../../preload/index.d'
 import { CHARACTERS } from '../characters'
 
 interface Props {
@@ -52,10 +52,37 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
   const [notesFolder, setNotesFolder] = useState(config.notesFolder ?? '')
   const [autoWrite, setAutoWrite] = useState(config.autoWriteNotes)
   const [saved, setSaved] = useState(false)
+  const [keyInput, setKeyInput] = useState('')
+  const [keyStatus, setKeyStatus] = useState<CoachKeyStatus | null>(null)
+  const [keyError, setKeyError] = useState('')
+
+  useEffect(() => {
+    window.api.coachKeyStatus().then(setKeyStatus)
+  }, [])
 
   const browseNotes = async (): Promise<void> => {
     const picked = await window.api.pickNotesFolder()
     if (picked) setNotesFolder(picked)
+  }
+
+  const saveKey = async (): Promise<void> => {
+    setKeyError('')
+    const res = await window.api.setCoachKey(keyInput)
+    if (!res.ok) {
+      setKeyError(
+        res.reason === 'encryption_unavailable'
+          ? 'OS keychain unavailable — cannot store the key securely.'
+          : `Could not save key (${res.reason ?? 'unknown'}).`
+      )
+      return
+    }
+    setKeyInput('')
+    setKeyStatus(await window.api.coachKeyStatus())
+  }
+
+  const clearKey = async (): Promise<void> => {
+    await window.api.clearCoachKey()
+    setKeyStatus(await window.api.coachKeyStatus())
   }
 
   const save = async (): Promise<void> => {
@@ -119,6 +146,34 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
         />{' '}
         Write notes automatically after each analysis
       </label>
+
+      <h4>AI coach — Anthropic API key (optional)</h4>
+      <p style={{ color: '#888', fontSize: 13, marginTop: -8 }}>
+        Stored encrypted with your OS keychain, only ever used to call the Anthropic API from this
+        machine. Saved separately from the settings below — no need to hit Save.
+      </p>
+      {keyStatus?.configured ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: '#6e9', fontSize: 13 }}>
+            Key saved (····{keyStatus.last4 ?? ''})
+          </span>
+          <button onClick={clearKey}>Remove key</button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="password"
+            style={{ flex: 1, padding: 6 }}
+            value={keyInput}
+            placeholder="sk-ant-…"
+            onChange={(e) => setKeyInput(e.target.value)}
+          />
+          <button disabled={!keyInput.trim()} onClick={saveKey}>
+            Save key
+          </button>
+        </div>
+      )}
+      {keyError && <p style={{ color: '#f88', fontSize: 13 }}>{keyError}</p>}
 
       <div style={{ marginTop: 16 }}>
         <button disabled={!folder || !code || mains.length === 0} onClick={save}>
