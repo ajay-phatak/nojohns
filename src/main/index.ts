@@ -132,6 +132,29 @@ app.whenReady().then(() => {
     return true
   })
 
+  // Passive update check: compare the newest published GitHub release to the
+  // running version. No downloading — the banner links to the releases page.
+  // Full auto-update (electron-updater) is deferred until code signing.
+  ipcMain.handle('update:check', async () => {
+    const current = app.getVersion()
+    try {
+      const res = await fetch('https://api.github.com/repos/ajay-phatak/nojohns/releases/latest', {
+        headers: { Accept: 'application/vnd.github+json' }
+      })
+      if (!res.ok) return { current, latest: null, newer: false }
+      const rel = (await res.json()) as { tag_name?: string; html_url?: string }
+      const latest = (rel.tag_name ?? '').replace(/^v/, '')
+      const toParts = (v: string): number[] => v.split('.').map((n) => parseInt(n, 10) || 0)
+      const [c, l] = [toParts(current), toParts(latest)]
+      const newer =
+        latest !== '' &&
+        (l[0] - c[0] || l[1] - c[1] || l[2] - c[2]) > 0
+      return { current, latest, newer, url: rel.html_url }
+    } catch {
+      return { current, latest: null, newer: false }
+    }
+  })
+
   ipcMain.handle('config:get', () => loadConfig())
   ipcMain.handle('config:set', (_e, patch: Partial<AppConfig>) => saveConfig(patch))
   ipcMain.handle('slippi:detect', () => detectSlippi())

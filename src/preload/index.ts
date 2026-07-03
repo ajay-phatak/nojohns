@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 const api = {
+  checkUpdate: (): Promise<unknown> => ipcRenderer.invoke('update:check'),
   getConfig: (): Promise<unknown> => ipcRenderer.invoke('config:get'),
   setConfig: (patch: Record<string, unknown>): Promise<unknown> =>
     ipcRenderer.invoke('config:set', patch),

@@ -79,7 +79,15 @@ export interface FetchResult {
   result?: { found?: number; scanned?: number; out?: string } | null
 }
 
+export interface UpdateCheck {
+  current: string
+  latest: string | null
+  newer: boolean
+  url?: string
+}
+
 export interface NoJohnsApi {
+  checkUpdate: () => Promise<UpdateCheck>
   proStatus: (dirNames: string[]) => Promise<ProDirStatus[]>
   fetchPros: (opts: FetchOpts) => Promise<FetchResult>
   cancelFetch: () => Promise<boolean>
