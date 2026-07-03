@@ -54,6 +54,10 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
   Sheik and Zelda share the `ZELDA_SHEIK` dataset dir, split by token.
 - `src/renderer/src/characters.ts` `engineName` must match py-slippi enum
   names lowercased (that's what names `pro_replays/<my>_vs_<opp>` dirs).
+- replayFolder should be the Slippi ROOT: the engine's `resolve_folder`
+  (session_review.py) picks the newest `YYYY-MM` subfolder per run. A month
+  folder in config goes silently stale at month roll-over (same old sets
+  re-analyzed, no new games found).
 - PowerShell 5.1: native stderr + `$ErrorActionPreference=Stop` = spurious
   failures (see build-engine.ps1's Invoke-Step pattern).
 - Never commit personal data: replays, history.json, session outputs, real

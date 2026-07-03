@@ -77,6 +77,10 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
             onChange={(e) => setFolder(e.target.value)}
             placeholder="C:\Users\you\Documents\Slippi"
           />
+          <p style={{ color: '#888', fontSize: 12 }}>
+            Point at your main Slippi folder — if it has monthly subfolders (2026-07, …), the newest
+            month is used automatically on every analysis.
+          </p>
           <button style={{ marginTop: 12 }} disabled={!folder} onClick={() => setStep(2)}>
             Next
           </button>

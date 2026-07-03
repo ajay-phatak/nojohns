@@ -113,6 +113,10 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
         value={folder}
         onChange={(e) => setFolder(e.target.value)}
       />
+      <p style={{ color: '#888', fontSize: 12, marginTop: 4 }}>
+        Point at your main Slippi folder — if it has monthly subfolders (2026-07, …), analysis
+        always uses the newest month. Picking a month folder directly pins you to it.
+      </p>
 
       <h4>Connect code</h4>
       <input
