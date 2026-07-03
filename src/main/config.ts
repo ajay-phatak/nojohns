@@ -12,6 +12,9 @@ export interface AppConfig {
   // 'api' = Anthropic API key (credits); 'claude-cli' = spawn the user's
   // local Claude Code install (bills their Pro/Max plan).
   coachBackend: 'api' | 'claude-cli'
+  // Model tier for coach requests. The heavy analysis is already done by the
+  // engine, so sonnet is the default; opus for deeper reads, haiku for cheap.
+  coachModel: 'opus' | 'sonnet' | 'haiku'
   onboarded: boolean
 }
 
@@ -23,6 +26,7 @@ const DEFAULTS: AppConfig = {
   notesFolder: null,
   autoWriteNotes: false,
   coachBackend: 'api',
+  coachModel: 'sonnet',
   onboarded: false
 }
 

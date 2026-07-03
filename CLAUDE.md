@@ -69,7 +69,10 @@ it); src/main/coach/client.ts calls the Anthropic API (claude-opus-4-8,
 adaptive thinking, streamed over coach:delta, top-level cache_control,
 usage→cost + monthly spend in userData/coach/spend.json, transcripts saved
 there too); prompts/coach-system.md is bundled into main via ?raw import;
-Coach tab (report + chat, per-response cost). Second backend
+Coach tab (report + chat, per-response cost, model tier picker —
+config.coachModel opus/sonnet/haiku, default sonnet since the engine already
+did the analysis; per-model pricing in client.ts, --model on the CLI).
+Second backend
 (config.coachBackend='claude-cli', src/main/coach/cli.ts): spawns the user's
 local Claude Code in headless -p stream-json mode so usage bills their
 Pro/Max plan — prompt goes over stdin (never argv), --resume for chat,

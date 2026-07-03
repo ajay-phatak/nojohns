@@ -10,16 +10,18 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 import coachSystemPrompt from '../../../prompts/coach-system.md?raw'
 import { getKey } from './key'
 
-// Opus-tier coach: the analysis is cheap, the advice is the product.
-const MODEL = 'claude-opus-4-8'
 const MAX_TOKENS_REPORT = 4096
 const MAX_TOKENS_CHAT = 2048
 
-// $/MTok for claude-opus-4-8; cache write 1.25x input, cache read 0.1x.
-const PRICE_IN = 5
-const PRICE_OUT = 25
-const PRICE_CACHE_WRITE = PRICE_IN * 1.25
-const PRICE_CACHE_READ = PRICE_IN * 0.1
+// The engine already did the analysis — the model reads two text reports and
+// writes advice, so sonnet is plenty for most users. $/MTok; cache write
+// bills 1.25x input, cache read 0.1x.
+export type CoachModel = 'opus' | 'sonnet' | 'haiku'
+const MODELS: Record<CoachModel, { id: string; priceIn: number; priceOut: number }> = {
+  opus: { id: 'claude-opus-4-8', priceIn: 5, priceOut: 25 },
+  sonnet: { id: 'claude-sonnet-5', priceIn: 3, priceOut: 15 },
+  haiku: { id: 'claude-haiku-4-5', priceIn: 1, priceOut: 5 }
+}
 
 export interface CoachUsage {
   inputTokens: number
@@ -75,23 +77,24 @@ export const resetConversation = (): void => {
 
 export const hasConversation = (): boolean => messages.length > 0
 
-function costOf(usage: Anthropic.Usage): number {
+function costOf(usage: Anthropic.Usage, model: CoachModel): number {
+  const { priceIn, priceOut } = MODELS[model]
   return (
-    (usage.input_tokens * PRICE_IN +
-      usage.output_tokens * PRICE_OUT +
-      (usage.cache_creation_input_tokens ?? 0) * PRICE_CACHE_WRITE +
-      (usage.cache_read_input_tokens ?? 0) * PRICE_CACHE_READ) /
+    (usage.input_tokens * priceIn +
+      usage.output_tokens * priceOut +
+      (usage.cache_creation_input_tokens ?? 0) * priceIn * 1.25 +
+      (usage.cache_read_input_tokens ?? 0) * priceIn * 0.1) /
     1_000_000
   )
 }
 
-function saveTranscript(): void {
+function saveTranscript(model: CoachModel): void {
   try {
     if (!transcriptPath) {
       mkdirSync(coachDir(), { recursive: true })
       transcriptPath = join(coachDir(), `coach-${Date.now()}.json`)
     }
-    writeFileSync(transcriptPath, JSON.stringify({ model: MODEL, messages }, null, 2))
+    writeFileSync(transcriptPath, JSON.stringify({ model: MODELS[model].id, messages }, null, 2))
   } catch {
     // transcripts are best-effort
   }
@@ -99,6 +102,7 @@ function saveTranscript(): void {
 
 async function runTurn(
   userContent: string,
+  model: CoachModel,
   maxTokens: number,
   onDelta: (text: string) => void,
   fresh = false
@@ -114,9 +118,10 @@ async function runTurn(
   try {
     const client = new Anthropic({ apiKey: key })
     const stream = client.messages.stream({
-      model: MODEL,
+      model: MODELS[model].id,
       max_tokens: maxTokens,
-      thinking: { type: 'adaptive' },
+      // Haiku 4.5 doesn't take adaptive thinking; opus/sonnet do.
+      ...(model === 'haiku' ? {} : { thinking: { type: 'adaptive' as const } }),
       // Auto-cache the last cacheable block: the big report prefix caches on
       // the first call, each chat turn extends the cached prefix. Verify with
       // usage.cache_read_input_tokens > 0 on follow-up turns.
@@ -134,12 +139,12 @@ async function runTurn(
     }
 
     messages.push({ role: 'assistant', content: final.content })
-    saveTranscript()
+    saveTranscript(model)
     const text = final.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map((b) => b.text)
       .join('')
-    const costUsd = costOf(final.usage)
+    const costUsd = costOf(final.usage, model)
     return {
       ok: true,
       text,
@@ -169,6 +174,7 @@ async function runTurn(
 export async function generateReport(
   sessionTxt: string,
   trendsTxt: string | null,
+  model: CoachModel,
   onDelta: (text: string) => void
 ): Promise<CoachResult> {
   const parts = [
@@ -178,11 +184,15 @@ export async function generateReport(
       : '(No long-term trends yet — this is an early session.)',
     'Give me the session report.'
   ]
-  return runTurn(parts.join('\n\n'), MAX_TOKENS_REPORT, onDelta, true)
+  return runTurn(parts.join('\n\n'), model, MAX_TOKENS_REPORT, onDelta, true)
 }
 
 /** Ask a follow-up on the current conversation. */
-export async function chat(text: string, onDelta: (t: string) => void): Promise<CoachResult> {
+export async function chat(
+  text: string,
+  model: CoachModel,
+  onDelta: (t: string) => void
+): Promise<CoachResult> {
   if (messages.length === 0) return { ok: false, reason: 'no_conversation' }
-  return runTurn(text, MAX_TOKENS_CHAT, onDelta)
+  return runTurn(text, model, MAX_TOKENS_CHAT, onDelta)
 }

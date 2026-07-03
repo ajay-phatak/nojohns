@@ -244,15 +244,16 @@ app.whenReady().then(() => {
   // Backend readiness in one call: which backend is selected + whether it
   // can actually serve a request right now.
   ipcMain.handle('coach:status', async () => {
-    const backend = loadConfig().coachBackend
+    const { coachBackend, coachModel } = loadConfig()
     const key = keyStatus()
     const cli = await detectCli()
     return {
-      backend,
+      backend: coachBackend,
+      model: coachModel,
       keyConfigured: key.configured,
       cliFound: cli.found,
       cliVersion: cli.version,
-      ready: backend === 'claude-cli' ? cli.found : key.configured
+      ready: coachBackend === 'claude-cli' ? cli.found : key.configured
     }
   })
 
@@ -286,14 +287,18 @@ app.whenReady().then(() => {
       // no trends yet
     }
     const onDelta = (text: string): void => event.sender.send('coach:delta', text)
-    return loadConfig().coachBackend === 'claude-cli'
-      ? cliGenerateReport(sessionTxt, trendsTxt, onDelta)
-      : generateReport(sessionTxt, trendsTxt, onDelta)
+    const { coachBackend, coachModel } = loadConfig()
+    return coachBackend === 'claude-cli'
+      ? cliGenerateReport(sessionTxt, trendsTxt, coachModel, onDelta)
+      : generateReport(sessionTxt, trendsTxt, coachModel, onDelta)
   })
 
   ipcMain.handle('coach:chat', (event, text: string) => {
     const onDelta = (t: string): void => event.sender.send('coach:delta', t)
-    return loadConfig().coachBackend === 'claude-cli' ? cliChat(text, onDelta) : chat(text, onDelta)
+    const { coachBackend, coachModel } = loadConfig()
+    return coachBackend === 'claude-cli'
+      ? cliChat(text, coachModel, onDelta)
+      : chat(text, coachModel, onDelta)
   })
 
   ipcMain.handle('coach:reset', () => {

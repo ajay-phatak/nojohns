@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CoachResult, CoachStatus, CoachUsage } from '../../../preload/index.d'
+import type { CoachModel, CoachResult, CoachStatus, CoachUsage } from '../../../preload/index.d'
+
+const MODEL_LABELS: Record<CoachModel, string> = {
+  sonnet: 'Sonnet — fast, recommended',
+  haiku: 'Haiku — cheapest',
+  opus: 'Opus — deepest read'
+}
 
 interface Turn {
   role: 'user' | 'assistant'
@@ -124,6 +130,22 @@ function Coach(): React.JSX.Element {
         <button disabled={running} onClick={report}>
           {turns.length === 0 ? 'Coach my latest session' : 'New report'}
         </button>
+        <select
+          value={status.model}
+          disabled={running}
+          style={{ fontSize: 12 }}
+          onChange={async (e) => {
+            const model = e.target.value as CoachModel
+            await window.api.setConfig({ coachModel: model })
+            setStatus({ ...status, model })
+          }}
+        >
+          {(Object.keys(MODEL_LABELS) as CoachModel[]).map((m) => (
+            <option key={m} value={m}>
+              {MODEL_LABELS[m]}
+            </option>
+          ))}
+        </select>
         {running && <span style={{ color: '#8fc', fontSize: 13 }}>Thinking…</span>}
       </div>
 

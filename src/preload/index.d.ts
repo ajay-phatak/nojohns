@@ -63,8 +63,11 @@ export interface AppConfig {
   notesFolder: string | null
   autoWriteNotes: boolean
   coachBackend: 'api' | 'claude-cli'
+  coachModel: CoachModel
   onboarded: boolean
 }
+
+export type CoachModel = 'opus' | 'sonnet' | 'haiku'
 
 export interface SlippiDetection {
   replayFolder: string | null
@@ -137,6 +140,7 @@ export interface CliDetection {
 
 export interface CoachStatus {
   backend: 'api' | 'claude-cli'
+  model: CoachModel
   keyConfigured: boolean
   cliFound: boolean
   cliVersion?: string

@@ -11,7 +11,7 @@ import { join } from 'path'
 import { mkdirSync, existsSync } from 'fs'
 import { homedir } from 'os'
 import coachSystemPrompt from '../../../prompts/coach-system.md?raw'
-import type { CoachResult } from './client'
+import type { CoachModel, CoachResult } from './client'
 
 const TIMEOUT_MS = 5 * 60 * 1000 // reports can think for a while
 
@@ -76,6 +76,7 @@ export function detectCli(): Promise<CliDetection> {
 // UUID ever appear as arguments.
 function runCli(
   prompt: string,
+  model: CoachModel,
   resume: string | null,
   onDelta: (text: string) => void
 ): Promise<CoachResult> {
@@ -93,8 +94,11 @@ function runCli(
   delete env.ANTHROPIC_API_KEY
   delete env.ANTHROPIC_AUTH_TOKEN
 
+  // Claude Code resolves the tier alias to whatever the user's plan offers
+  // (e.g. opus needs Max — a plan without it errors, surfaced as cli_failed).
   const cmd =
     `${cliCommand()} -p --output-format stream-json --verbose --include-partial-messages` +
+    ` --model ${model}` +
     (resume ? ` --resume ${resume}` : '')
 
   return new Promise((resolve) => {
@@ -182,6 +186,7 @@ function runCli(
 export function cliGenerateReport(
   sessionTxt: string,
   trendsTxt: string | null,
+  model: CoachModel,
   onDelta: (text: string) => void
 ): Promise<CoachResult> {
   if (busy) return Promise.resolve({ ok: false, reason: 'busy' })
@@ -195,11 +200,15 @@ export function cliGenerateReport(
       : '(No long-term trends yet — this is an early session.)',
     'Give me the session report.'
   ]
-  return runCli(parts.join('\n\n'), null, onDelta)
+  return runCli(parts.join('\n\n'), model, null, onDelta)
 }
 
 /** Ask a follow-up on the current CLI conversation. */
-export function cliChat(text: string, onDelta: (t: string) => void): Promise<CoachResult> {
+export function cliChat(
+  text: string,
+  model: CoachModel,
+  onDelta: (t: string) => void
+): Promise<CoachResult> {
   if (!sessionId) return Promise.resolve({ ok: false, reason: 'no_conversation' })
-  return runCli(text, sessionId, onDelta)
+  return runCli(text, model, sessionId, onDelta)
 }
