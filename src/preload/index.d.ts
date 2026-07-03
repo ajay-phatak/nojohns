@@ -62,6 +62,7 @@ export interface AppConfig {
   matchups: string[]
   notesFolder: string | null
   autoWriteNotes: boolean
+  coachBackend: 'api' | 'claude-cli'
   onboarded: boolean
 }
 
@@ -114,6 +115,8 @@ export interface NoJohnsApi {
   setCoachKey: (key: string) => Promise<{ ok: boolean; reason?: string }>
   clearCoachKey: () => Promise<{ ok: boolean }>
   coachKeyStatus: () => Promise<CoachKeyStatus>
+  coachStatus: () => Promise<CoachStatus>
+  detectClaudeCli: () => Promise<CliDetection>
   coachReport: (sessionFile?: string) => Promise<CoachResult>
   coachChat: (text: string) => Promise<CoachResult>
   coachReset: () => Promise<boolean>
@@ -125,6 +128,19 @@ export interface NoJohnsApi {
 export interface CoachKeyStatus {
   configured: boolean
   last4?: string
+}
+
+export interface CliDetection {
+  found: boolean
+  version?: string
+}
+
+export interface CoachStatus {
+  backend: 'api' | 'claude-cli'
+  keyConfigured: boolean
+  cliFound: boolean
+  cliVersion?: string
+  ready: boolean
 }
 
 export interface CoachUsage {

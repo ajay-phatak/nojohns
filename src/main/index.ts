@@ -10,6 +10,13 @@ import { writeSessionNotes } from './notes/write'
 import type { TrendsData } from './notes/render'
 import { setKey, clearKey, keyStatus } from './coach/key'
 import { generateReport, chat, resetConversation, hasConversation } from './coach/client'
+import {
+  detectCli,
+  cliGenerateReport,
+  cliChat,
+  resetCliConversation,
+  hasCliConversation
+} from './coach/cli'
 
 function createWindow(): void {
   // Create the browser window.
@@ -232,6 +239,22 @@ app.whenReady().then(() => {
   ipcMain.handle('coach:setKey', (_e, key: string) => setKey(key))
   ipcMain.handle('coach:clearKey', () => clearKey())
   ipcMain.handle('coach:keyStatus', () => keyStatus())
+  ipcMain.handle('coach:detectCli', () => detectCli())
+
+  // Backend readiness in one call: which backend is selected + whether it
+  // can actually serve a request right now.
+  ipcMain.handle('coach:status', async () => {
+    const backend = loadConfig().coachBackend
+    const key = keyStatus()
+    const cli = await detectCli()
+    return {
+      backend,
+      keyConfigured: key.configured,
+      cliFound: cli.found,
+      cliVersion: cli.version,
+      ready: backend === 'claude-cli' ? cli.found : key.configured
+    }
+  })
 
   // Coaching report on an archived session (default: newest). Deltas stream
   // over coach:delta; the invoke resolves with the final result + usage/cost.
@@ -262,19 +285,24 @@ app.whenReady().then(() => {
     } catch {
       // no trends yet
     }
-    return generateReport(sessionTxt, trendsTxt, (text) => event.sender.send('coach:delta', text))
+    const onDelta = (text: string): void => event.sender.send('coach:delta', text)
+    return loadConfig().coachBackend === 'claude-cli'
+      ? cliGenerateReport(sessionTxt, trendsTxt, onDelta)
+      : generateReport(sessionTxt, trendsTxt, onDelta)
   })
 
-  ipcMain.handle('coach:chat', (event, text: string) =>
-    chat(text, (t) => event.sender.send('coach:delta', t))
-  )
+  ipcMain.handle('coach:chat', (event, text: string) => {
+    const onDelta = (t: string): void => event.sender.send('coach:delta', t)
+    return loadConfig().coachBackend === 'claude-cli' ? cliChat(text, onDelta) : chat(text, onDelta)
+  })
 
   ipcMain.handle('coach:reset', () => {
     resetConversation()
+    resetCliConversation()
     return true
   })
 
-  ipcMain.handle('coach:hasConversation', () => hasConversation())
+  ipcMain.handle('coach:hasConversation', () => hasConversation() || hasCliConversation())
 
   ipcMain.handle('config:get', () => loadConfig())
   ipcMain.handle('config:set', (_e, patch: Partial<AppConfig>) => saveConfig(patch))

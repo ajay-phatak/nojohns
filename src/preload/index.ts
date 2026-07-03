@@ -23,6 +23,8 @@ const api = {
   setCoachKey: (key: string): Promise<unknown> => ipcRenderer.invoke('coach:setKey', key),
   clearCoachKey: (): Promise<unknown> => ipcRenderer.invoke('coach:clearKey'),
   coachKeyStatus: (): Promise<unknown> => ipcRenderer.invoke('coach:keyStatus'),
+  coachStatus: (): Promise<unknown> => ipcRenderer.invoke('coach:status'),
+  detectClaudeCli: (): Promise<unknown> => ipcRenderer.invoke('coach:detectCli'),
   coachReport: (sessionFile?: string): Promise<unknown> =>
     ipcRenderer.invoke('coach:report', sessionFile),
   coachChat: (text: string): Promise<unknown> => ipcRenderer.invoke('coach:chat', text),

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CoachKeyStatus, CoachResult, CoachUsage } from '../../../preload/index.d'
+import type { CoachResult, CoachStatus, CoachUsage } from '../../../preload/index.d'
 
 interface Turn {
   role: 'user' | 'assistant'
@@ -14,7 +14,9 @@ const REASON_TEXT: Record<string, string> = {
   refusal: 'The model declined to answer that — try rephrasing.',
   no_session: 'No analyzed session yet — run an analysis from the Dashboard first.',
   no_conversation: 'Generate a report first, then ask follow-ups.',
-  busy: 'A response is already in progress.'
+  busy: 'A response is already in progress.',
+  cli_not_logged_in: 'Claude Code is not logged in — run `claude` in a terminal and log in first.',
+  cli_timeout: 'Claude Code took too long to respond — try again.'
 }
 
 function CostLine({ usage }: { usage: CoachUsage }): React.JSX.Element {
@@ -27,7 +29,7 @@ function CostLine({ usage }: { usage: CoachUsage }): React.JSX.Element {
 }
 
 function Coach(): React.JSX.Element {
-  const [keyStatus, setKeyStatus] = useState<CoachKeyStatus | null>(null)
+  const [status, setStatus] = useState<CoachStatus | null>(null)
   const [turns, setTurns] = useState<Turn[]>([])
   const [streaming, setStreaming] = useState('')
   const [running, setRunning] = useState(false)
@@ -36,7 +38,7 @@ function Coach(): React.JSX.Element {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    window.api.coachKeyStatus().then(setKeyStatus)
+    window.api.coachStatus().then(setStatus)
   }, [])
 
   useEffect(() => window.api.onCoachDelta((text) => setStreaming((s) => s + text)), [])
@@ -80,9 +82,9 @@ function Coach(): React.JSX.Element {
     }
   }
 
-  if (keyStatus === null) return <p style={{ color: '#888' }}>Loading…</p>
+  if (status === null) return <p style={{ color: '#888' }}>Loading…</p>
 
-  if (!keyStatus.configured) {
+  if (!status.ready) {
     return (
       <div>
         <h2>Coach</h2>
@@ -95,10 +97,21 @@ function Coach(): React.JSX.Element {
             maxWidth: 560
           }}
         >
-          🤖 <strong style={{ color: '#aaa' }}>AI coach</strong> — add an Anthropic API key in
-          Settings and get a written coaching report after each session, plus a chat to dig into the
-          details. Your key stays on this machine, and you pay Anthropic directly for usage (a
-          report costs a few cents).
+          🤖 <strong style={{ color: '#aaa' }}>AI coach</strong> — get a written coaching report
+          after each session, plus a chat to dig into the details.{' '}
+          {status.backend === 'claude-cli' ? (
+            <>
+              Claude Code wasn&apos;t detected on this machine — install it and log in with your
+              Pro/Max account (reports are then covered by your plan), or switch the coach to an API
+              key in Settings.
+            </>
+          ) : (
+            <>
+              Add an Anthropic API key in Settings — your key stays on this machine and you pay
+              Anthropic directly (a report costs a few cents). Have a Claude Pro/Max plan? Pick the
+              Claude Code backend in Settings instead and skip API credits entirely.
+            </>
+          )}
         </div>
       </div>
     )
@@ -137,6 +150,11 @@ function Coach(): React.JSX.Element {
           </div>
           <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.5 }}>{t.text}</div>
           {t.usage && <CostLine usage={t.usage} />}
+          {!t.usage && t.role === 'assistant' && status.backend === 'claude-cli' && (
+            <div style={{ color: '#666', fontSize: 11, marginTop: 4 }}>
+              covered by your Claude plan
+            </div>
+          )}
         </div>
       ))}
 

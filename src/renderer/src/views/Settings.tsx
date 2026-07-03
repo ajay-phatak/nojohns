@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { AppConfig, CoachKeyStatus } from '../../../preload/index.d'
+import type { AppConfig, CliDetection, CoachKeyStatus } from '../../../preload/index.d'
 import { CHARACTERS } from '../characters'
 
 interface Props {
@@ -55,9 +55,12 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
   const [keyInput, setKeyInput] = useState('')
   const [keyStatus, setKeyStatus] = useState<CoachKeyStatus | null>(null)
   const [keyError, setKeyError] = useState('')
+  const [backend, setBackend] = useState(config.coachBackend)
+  const [cli, setCli] = useState<CliDetection | null>(null)
 
   useEffect(() => {
     window.api.coachKeyStatus().then(setKeyStatus)
+    window.api.detectClaudeCli().then(setCli)
   }, [])
 
   const browseNotes = async (): Promise<void> => {
@@ -92,7 +95,8 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
       mainCharacters: mains,
       matchups,
       notesFolder: notesFolder || null,
-      autoWriteNotes: autoWrite
+      autoWriteNotes: autoWrite,
+      coachBackend: backend
     })
     onSaved(next)
     setSaved(true)
@@ -147,33 +151,62 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
         Write notes automatically after each analysis
       </label>
 
-      <h4>AI coach — Anthropic API key (optional)</h4>
-      <p style={{ color: '#888', fontSize: 13, marginTop: -8 }}>
-        Stored encrypted with your OS keychain, only ever used to call the Anthropic API from this
-        machine. Saved separately from the settings below — no need to hit Save.
-      </p>
-      {keyStatus?.configured ? (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ color: '#6e9', fontSize: 13 }}>
-            Key saved (····{keyStatus.last4 ?? ''})
-          </span>
-          <button onClick={clearKey}>Remove key</button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            type="password"
-            style={{ flex: 1, padding: 6 }}
-            value={keyInput}
-            placeholder="sk-ant-…"
-            onChange={(e) => setKeyInput(e.target.value)}
-          />
-          <button disabled={!keyInput.trim()} onClick={saveKey}>
-            Save key
-          </button>
+      <h4>AI coach (optional)</h4>
+      <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 4 }}>
+        <input
+          type="radio"
+          name="coachBackend"
+          checked={backend === 'claude-cli'}
+          onChange={() => setBackend('claude-cli')}
+        />{' '}
+        Claude Code — uses your Pro/Max plan, no API credits
+        <span style={{ marginLeft: 8, color: cli?.found ? '#6e9' : '#c94', fontSize: 12 }}>
+          {cli === null
+            ? 'checking…'
+            : cli.found
+              ? `detected (${cli.version})`
+              : 'not found — install Claude Code and log in'}
+        </span>
+      </label>
+      <label style={{ display: 'block', fontSize: 13, color: '#aaa' }}>
+        <input
+          type="radio"
+          name="coachBackend"
+          checked={backend === 'api'}
+          onChange={() => setBackend('api')}
+        />{' '}
+        Anthropic API key — pay-per-use credits
+      </label>
+      {backend === 'api' && (
+        <div style={{ marginTop: 8 }}>
+          <p style={{ color: '#888', fontSize: 13, marginTop: 0 }}>
+            Stored encrypted with your OS keychain, only ever used to call the Anthropic API from
+            this machine. Saved immediately — no need to hit Save.
+          </p>
+          {keyStatus?.configured ? (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ color: '#6e9', fontSize: 13 }}>
+                Key saved (····{keyStatus.last4 ?? ''})
+              </span>
+              <button onClick={clearKey}>Remove key</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="password"
+                style={{ flex: 1, padding: 6 }}
+                value={keyInput}
+                placeholder="sk-ant-…"
+                onChange={(e) => setKeyInput(e.target.value)}
+              />
+              <button disabled={!keyInput.trim()} onClick={saveKey}>
+                Save key
+              </button>
+            </div>
+          )}
+          {keyError && <p style={{ color: '#f88', fontSize: 13 }}>{keyError}</p>}
         </div>
       )}
-      {keyError && <p style={{ color: '#f88', fontSize: 13 }}>{keyError}</p>}
 
       <div style={{ marginTop: 16 }}>
         <button disabled={!folder || !code || mains.length === 0} onClick={save}>

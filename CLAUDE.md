@@ -69,7 +69,14 @@ it); src/main/coach/client.ts calls the Anthropic API (claude-opus-4-8,
 adaptive thinking, streamed over coach:delta, top-level cache_control,
 usage→cost + monthly spend in userData/coach/spend.json, transcripts saved
 there too); prompts/coach-system.md is bundled into main via ?raw import;
-Coach tab (report + chat, per-response cost). Remaining before release:
+Coach tab (report + chat, per-response cost). Second backend
+(config.coachBackend='claude-cli', src/main/coach/cli.ts): spawns the user's
+local Claude Code in headless -p stream-json mode so usage bills their
+Pro/Max plan — prompt goes over stdin (never argv), --resume for chat,
+ANTHROPIC_API_KEY stripped from child env so it can't silently bill credits,
+CLI probed at ~/.local/bin + %APPDATA%\npm since Electron's PATH misses
+them. Never lift Claude Code's OAuth token for direct API calls (ToS).
+Remaining before release:
 E2E with a real key (verify cache_read_input_tokens > 0 on chat turns),
 iterate the prompt on real sessions, decide the soft spend-warning UX.
 Deferred: code signing (Azure Trusted Signing), full auto-update via

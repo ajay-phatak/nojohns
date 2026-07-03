@@ -9,6 +9,9 @@ export interface AppConfig {
   matchups: string[] // opponent characters, e.g. ["Fox", "Falco", "Marth"]
   notesFolder: string | null
   autoWriteNotes: boolean // write notes automatically after each analysis
+  // 'api' = Anthropic API key (credits); 'claude-cli' = spawn the user's
+  // local Claude Code install (bills their Pro/Max plan).
+  coachBackend: 'api' | 'claude-cli'
   onboarded: boolean
 }
 
@@ -19,6 +22,7 @@ const DEFAULTS: AppConfig = {
   matchups: [],
   notesFolder: null,
   autoWriteNotes: false,
+  coachBackend: 'api',
   onboarded: false
 }
 
