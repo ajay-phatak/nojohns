@@ -11,7 +11,7 @@ import { join } from 'path'
 import { mkdirSync, existsSync } from 'fs'
 import { homedir } from 'os'
 import coachSystemPrompt from '../../../prompts/coach-system.md?raw'
-import type { CoachModel, CoachResult } from './client'
+import { buildAdvisePrompt, type CoachModel, type CoachResult } from './client'
 
 const TIMEOUT_MS = 5 * 60 * 1000 // reports can think for a while
 
@@ -186,21 +186,18 @@ function runCli(
 export function cliGenerateReport(
   sessionTxt: string,
   trendsTxt: string | null,
+  previousNotes: string | null,
   model: CoachModel,
   onDelta: (text: string) => void
 ): Promise<CoachResult> {
   if (busy) return Promise.resolve({ ok: false, reason: 'busy' })
   sessionId = null
-  const parts = [
+  const prompt = [
     '<coaching_instructions>\n' + coachSystemPrompt + '\n</coaching_instructions>',
     'Follow the coaching instructions above for this whole conversation. Do not use any tools — everything you need is in this message.',
-    'Here is my session report:\n\n```\n' + sessionTxt + '\n```',
-    trendsTxt
-      ? 'And my long-term trends:\n\n```\n' + trendsTxt + '\n```'
-      : '(No long-term trends yet — this is an early session.)',
-    'Give me the session report.'
-  ]
-  return runCli(parts.join('\n\n'), model, null, onDelta)
+    buildAdvisePrompt(sessionTxt, trendsTxt, previousNotes)
+  ].join('\n\n')
+  return runCli(prompt, model, null, onDelta)
 }
 
 /** Ask a follow-up on the current CLI conversation. */

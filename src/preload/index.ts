@@ -20,8 +20,8 @@ const api = {
   cancelFetch: (): Promise<unknown> => ipcRenderer.invoke('engine:cancelFetch'),
   writeNotes: (sessionFile?: string): Promise<unknown> =>
     ipcRenderer.invoke('notes:write', sessionFile),
-  writeNotesAi: (sessionFile?: string): Promise<unknown> =>
-    ipcRenderer.invoke('notes:writeAi', sessionFile),
+  saveFocuses: (payload: Record<string, unknown>): Promise<unknown> =>
+    ipcRenderer.invoke('notes:saveFocuses', payload),
   setCoachKey: (key: string): Promise<unknown> => ipcRenderer.invoke('coach:setKey', key),
   clearCoachKey: (): Promise<unknown> => ipcRenderer.invoke('coach:clearKey'),
   coachKeyStatus: (): Promise<unknown> => ipcRenderer.invoke('coach:keyStatus'),

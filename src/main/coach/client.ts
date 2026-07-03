@@ -170,21 +170,43 @@ async function runTurn(
   }
 }
 
-/** Start a fresh conversation and stream the coaching report. */
-export async function generateReport(
+/** Shared first-turn content for both backends: session + trends + the
+ *  player's own Progress note so advice evolves with what they committed to. */
+export function buildAdvisePrompt(
   sessionTxt: string,
   trendsTxt: string | null,
-  model: CoachModel,
-  onDelta: (text: string) => void
-): Promise<CoachResult> {
+  previousNotes: string | null
+): string {
   const parts = [
     'Here is my session report:\n\n```\n' + sessionTxt + '\n```',
     trendsTxt
       ? 'And my long-term trends:\n\n```\n' + trendsTxt + '\n```'
-      : '(No long-term trends yet — this is an early session.)',
-    'Give me the session report.'
+      : '(No long-term trends yet — this is an early session.)'
   ]
-  return runTurn(parts.join('\n\n'), model, MAX_TOKENS_REPORT, onDelta, true)
+  if (previousNotes) {
+    // Focuses + user text live at the end of Progress.md — keep the tail.
+    const trimmed = previousNotes.length > 16000 ? previousNotes.slice(-16000) : previousNotes
+    parts.push('<previous_notes>\n' + trimmed + '\n</previous_notes>')
+  }
+  parts.push('Review this session.')
+  return parts.join('\n\n')
+}
+
+/** Start a fresh conversation and stream the advisor's session review. */
+export async function generateReport(
+  sessionTxt: string,
+  trendsTxt: string | null,
+  previousNotes: string | null,
+  model: CoachModel,
+  onDelta: (text: string) => void
+): Promise<CoachResult> {
+  return runTurn(
+    buildAdvisePrompt(sessionTxt, trendsTxt, previousNotes),
+    model,
+    MAX_TOKENS_REPORT,
+    onDelta,
+    true
+  )
 }
 
 /** Ask a follow-up on the current conversation. */

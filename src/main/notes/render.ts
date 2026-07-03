@@ -385,7 +385,7 @@ export function progressBody(trends: TrendsData): string {
   }
 
   a('')
-  a('## Current focuses')
+  a('## Declining metrics')
   a('')
   const main = chars[0]
   const declining: { t: MetricTrend; key: string; score: number }[] = []
@@ -411,9 +411,58 @@ export function progressBody(trends: TrendsData): string {
   return lines.join('\n')
 }
 
-export function progressNoteTemplate(trends: TrendsData): NotePart[] {
-  return [
-    { kind: 'block', id: 'progress', body: progressBody(trends) },
-    { kind: 'text', text: NOTES_SEED }
-  ]
+export function progressNoteTemplate(trends: TrendsData, focusesBody?: string | null): NotePart[] {
+  const parts: NotePart[] = [{ kind: 'block', id: 'progress', body: progressBody(trends) }]
+  // Agreed focuses (from the coach advisor flow). Only in the template when a
+  // save just happened — plain rewrites leave the existing block untouched.
+  if (focusesBody) {
+    parts.push({ kind: 'text', text: '' })
+    parts.push({ kind: 'block', id: 'focuses', body: focusesBody })
+  }
+  parts.push({ kind: 'text', text: NOTES_SEED })
+  return parts
+}
+
+// ---------------------------------------------------------------------------
+// Agreed focuses — the advisor flow's output, and its input next session
+// ---------------------------------------------------------------------------
+
+export interface FocusItem {
+  gap: string
+  plan: string
+}
+
+/**
+ * Upsert one dated focus group into the focuses block body. Groups are
+ * newest-first; a re-save on the same date replaces that group; only the
+ * newest `keep` groups are retained — enough history for the coach to see
+ * what the player has been working on without the block growing forever.
+ */
+export function mergeFocusGroups(
+  existingBody: string | null,
+  date: string,
+  items: FocusItem[],
+  keep = 3
+): string {
+  const groups = new Map<string, string[]>()
+  let current: string[] | null = null
+  for (const line of (existingBody ?? '').split('\n')) {
+    const m = line.match(/^### (\d{4}-\d{2}-\d{2})/)
+    if (m) {
+      current = []
+      groups.set(m[1], current)
+    } else if (current && line.startsWith('- ')) {
+      current.push(line)
+    }
+  }
+  groups.set(
+    date,
+    items.map((f) => `- **${f.gap}** — ${f.plan}`)
+  )
+  const sorted = [...groups.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, keep)
+  const lines = ['## Focuses']
+  for (const [d, rows] of sorted) {
+    lines.push('', `### ${d}`, ...rows)
+  }
+  return lines.join('\n')
 }

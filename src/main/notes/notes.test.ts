@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { mergeNote, mergeFrontmatter, extractBlock, type NotePart } from './merge'
-import { mergeLogRows } from './render'
+import { mergeLogRows, mergeFocusGroups } from './render'
 import { writeSessionNotes } from './write'
 import type { SessionData, SetRecord } from '../../preload/index.d'
 import type { TrendsData } from './render'
@@ -125,6 +125,27 @@ describe('mergeLogRows', () => {
     const two = mergeLogRows(one, '- 2026-07-02 — 3-1 vs ABCD#123 (4g)')
     expect(two).toContain('3-1')
     expect(two).not.toContain('2-1')
+  })
+})
+
+describe('mergeFocusGroups', () => {
+  it('prepends new dated groups and keeps only the newest three', () => {
+    let body: string | null = null
+    for (const d of ['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22']) {
+      body = mergeFocusGroups(body, d, [{ gap: `gap ${d}`, plan: `plan ${d}` }])
+    }
+    expect(body).toContain('### 2026-06-22')
+    expect(body).toContain('### 2026-06-08')
+    expect(body).not.toContain('2026-06-01')
+    expect(body!.indexOf('2026-06-22')).toBeLessThan(body!.indexOf('2026-06-15'))
+  })
+
+  it('replaces the group for a re-saved date', () => {
+    const one = mergeFocusGroups(null, '2026-07-01', [{ gap: 'old', plan: 'old plan' }])
+    const two = mergeFocusGroups(one, '2026-07-01', [{ gap: 'new', plan: 'new plan' }])
+    expect(two).toContain('**new** — new plan')
+    expect(two).not.toContain('old plan')
+    expect(two.match(/### 2026-07-01/g)).toHaveLength(1)
   })
 })
 
@@ -296,5 +317,29 @@ describe('writeSessionNotes', () => {
     const note = readFileSync(path, 'utf-8')
     expect(note).toContain('my own observation')
     expect(note).toContain('AI advice arrives later.')
+  })
+
+  it('saves agreed focuses into Progress.md and preserves them on plain rewrites', () => {
+    writeSessionNotes(vault, session, trends, 'the read', {
+      date: '2026-07-01',
+      items: [{ gap: 'Free recoveries', plan: 'Always contest — move to ledge on their recovery.' }]
+    })
+    const path = join(vault, 'Progress.md')
+    let progress = readFileSync(path, 'utf-8')
+    expect(progress).toContain('<!-- nojohns:begin focuses -->')
+    expect(progress).toContain('### 2026-07-01')
+    expect(progress).toContain('**Free recoveries** — Always contest')
+    // Plain rewrite (no focuses) leaves the block intact
+    writeSessionNotes(vault, session, trends)
+    progress = readFileSync(path, 'utf-8')
+    expect(progress).toContain('**Free recoveries** — Always contest')
+    // Next save adds a new dated group alongside
+    writeSessionNotes(vault, session, trends, 'read 2', {
+      date: '2026-07-08',
+      items: [{ gap: 'Reversal cost', plan: 'Cap extensions at 2 hits past 80%.' }]
+    })
+    progress = readFileSync(path, 'utf-8')
+    expect(progress).toContain('### 2026-07-08')
+    expect(progress).toContain('### 2026-07-01')
   })
 })

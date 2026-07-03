@@ -15,8 +15,10 @@ import {
   matchupLogRow,
   mergeLogRows,
   progressNoteTemplate,
+  mergeFocusGroups,
   type TrendsData,
-  type MatchupTrend
+  type MatchupTrend,
+  type FocusItem
 } from './render'
 
 export interface NotesWriteResult {
@@ -76,7 +78,8 @@ export function writeSessionNotes(
   notesFolder: string,
   session: SessionData,
   trends: TrendsData | null,
-  coachReport: string | null = null
+  coachReport: string | null = null,
+  focuses: { date: string; items: FocusItem[] } | null = null
 ): NotesWriteResult {
   const res: NotesWriteResult = { written: [], unchanged: [] }
   const sessionsDir = join(notesFolder, 'Sessions')
@@ -109,7 +112,11 @@ export function writeSessionNotes(
 
   if (trends) {
     const path = join(notesFolder, 'Progress.md')
-    writeIfChanged(path, mergeNote(readOrNull(path), progressNoteTemplate(trends)), res)
+    const existing = readOrNull(path)
+    const focusesBody = focuses
+      ? mergeFocusGroups(extractBlock(existing, 'focuses'), focuses.date, focuses.items)
+      : null
+    writeIfChanged(path, mergeNote(existing, progressNoteTemplate(trends, focusesBody)), res)
   }
 
   return res

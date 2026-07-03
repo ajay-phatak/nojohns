@@ -9,6 +9,7 @@ import { detectSlippi } from './slippi-detect'
 import { writeSessionNotes } from './notes/write'
 import type { TrendsData } from './notes/render'
 import { setKey, clearKey, keyStatus } from './coach/key'
+import { parseAdvice, type CoachGap } from './coach/advise'
 import { generateReport, chat, resetConversation, hasConversation } from './coach/client'
 import {
   detectCli,
@@ -200,7 +201,7 @@ app.whenReady().then(() => {
   }
 
   // Render + write the notes tier for one archived session (default: newest).
-  // Shared by notes:write, notes:writeAi, and the post-analysis auto-write.
+  // Shared by notes:write and the post-analysis auto-write.
   const writeNotesFor = (
     sessionFile?: string,
     coachReport: string | null = null
@@ -223,39 +224,49 @@ app.whenReady().then(() => {
 
   ipcMain.handle('notes:write', (_e, sessionFile?: string) => writeNotesFor(sessionFile))
 
-  // AI notes: generate a coaching report through the configured backend, then
-  // write the notes with the report embedded as the session note's coach
-  // block. Deltas stream over coach:delta for progress display.
-  ipcMain.handle('notes:writeAi', async (event, sessionFile?: string) => {
-    const config = loadConfig()
-    if (!config.notesFolder) return { ok: false, reason: 'no_folder' }
-    const file = resolveSessionJson(sessionFile)
-    if (!file) return { ok: false, reason: 'no_session' }
-    let sessionTxt: string
-    try {
-      sessionTxt = readFileSync(
-        join(dataDir(), 'sessions', file.replace(/\.json$/, '.txt')),
-        'utf-8'
+  // Save the advisor outcome the user agreed to: the read goes into the
+  // session note's coach block, the chosen focuses into Progress.md's
+  // focuses block (dated, last 3 groups kept — next session's advice reads
+  // them back).
+  ipcMain.handle(
+    'notes:saveFocuses',
+    (
+      _e,
+      payload: { sessionFile?: string; prose: string; focuses: { gap: string; plan: string }[] }
+    ) => {
+      const config = loadConfig()
+      if (!config.notesFolder) return { ok: false, reason: 'no_folder' }
+      const file = resolveSessionJson(payload.sessionFile)
+      if (!file) return { ok: false, reason: 'no_session' }
+      const session = readJsonOrNull<Parameters<typeof writeSessionNotes>[1]>(
+        join(dataDir(), 'sessions', file)
       )
-    } catch {
-      return { ok: false, reason: 'no_session' }
+      if (!session) return { ok: false, reason: 'bad_session' }
+      const trends = readJsonOrNull<TrendsData>(join(dataDir(), 'trends.json'))
+      const date =
+        session.sets
+          .map((s) => s.session_date)
+          .sort()
+          .reverse()[0] ?? ''
+      const coachBlock = [
+        payload.prose.trim(),
+        '',
+        `### Agreed focuses (${date})`,
+        ...payload.focuses.map((f) => `- **${f.gap}** — ${f.plan}`)
+      ].join('\n')
+      try {
+        return {
+          ok: true,
+          ...writeSessionNotes(config.notesFolder, session, trends, coachBlock, {
+            date,
+            items: payload.focuses
+          })
+        }
+      } catch (err) {
+        return { ok: false, reason: String(err) }
+      }
     }
-    let trendsTxt: string | null = null
-    try {
-      trendsTxt = readFileSync(join(dataDir(), 'trends.txt'), 'utf-8')
-    } catch {
-      // no trends yet
-    }
-    const onDelta = (t: string): void => event.sender.send('coach:delta', t)
-    const report =
-      config.coachBackend === 'claude-cli'
-        ? await cliGenerateReport(sessionTxt, trendsTxt, config.coachModel, onDelta)
-        : await generateReport(sessionTxt, trendsTxt, config.coachModel, onDelta)
-    if (!report.ok || !report.text) {
-      return { ok: false, reason: report.reason ?? 'coach_failed' }
-    }
-    return { ...writeNotesFor(file, report.text), usage: report.usage }
-  })
+  )
 
   ipcMain.handle('notes:pickFolder', async () => {
     const r = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
@@ -284,7 +295,7 @@ app.whenReady().then(() => {
   // Backend readiness in one call: which backend is selected + whether it
   // can actually serve a request right now.
   ipcMain.handle('coach:status', async () => {
-    const { coachBackend, coachModel } = loadConfig()
+    const { coachBackend, coachModel, notesFolder } = loadConfig()
     const key = keyStatus()
     const cli = await detectCli()
     return {
@@ -293,6 +304,7 @@ app.whenReady().then(() => {
       keyConfigured: key.configured,
       cliFound: cli.found,
       cliVersion: cli.version,
+      notesConfigured: !!notesFolder,
       ready: coachBackend === 'claude-cli' ? cli.found : key.configured
     }
   })
@@ -327,10 +339,24 @@ app.whenReady().then(() => {
       // no trends yet
     }
     const onDelta = (text: string): void => event.sender.send('coach:delta', text)
-    const { coachBackend, coachModel } = loadConfig()
-    return coachBackend === 'claude-cli'
-      ? cliGenerateReport(sessionTxt, trendsTxt, coachModel, onDelta)
-      : generateReport(sessionTxt, trendsTxt, coachModel, onDelta)
+    const { coachBackend, coachModel, notesFolder } = loadConfig()
+    // The player's Progress note closes the loop: previously agreed focuses
+    // and their own written notes shape this session's advice.
+    let previousNotes: string | null = null
+    if (notesFolder) {
+      try {
+        previousNotes = readFileSync(join(notesFolder, 'Progress.md'), 'utf-8')
+      } catch {
+        // no progress note yet
+      }
+    }
+    const res =
+      coachBackend === 'claude-cli'
+        ? await cliGenerateReport(sessionTxt, trendsTxt, previousNotes, coachModel, onDelta)
+        : await generateReport(sessionTxt, trendsTxt, previousNotes, coachModel, onDelta)
+    if (!res.ok || !res.text) return res
+    const { prose, gaps }: { prose: string; gaps: CoachGap[] } = parseAdvice(res.text)
+    return { ...res, text: prose, gaps }
   })
 
   ipcMain.handle('coach:chat', (event, text: string) => {

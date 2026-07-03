@@ -38,7 +38,6 @@ export interface NotesResult {
   reason?: string
   written?: string[]
   unchanged?: string[]
-  usage?: CoachUsage
 }
 
 export interface AnalyzeSessionResult {
@@ -114,7 +113,11 @@ export interface NoJohnsApi {
   getTrends: () => Promise<Record<string, unknown> | null>
   doctor: (folder: string, code: string) => Promise<DoctorResult>
   writeNotes: (sessionFile?: string) => Promise<NotesResult>
-  writeNotesAi: (sessionFile?: string) => Promise<NotesResult>
+  saveFocuses: (payload: {
+    sessionFile?: string
+    prose: string
+    focuses: { gap: string; plan: string }[]
+  }) => Promise<NotesResult>
   pickNotesFolder: () => Promise<string | null>
   openNote: (relPath: string) => Promise<{ ok: boolean; reason?: string }>
   setCoachKey: (key: string) => Promise<{ ok: boolean; reason?: string }>
@@ -146,7 +149,14 @@ export interface CoachStatus {
   keyConfigured: boolean
   cliFound: boolean
   cliVersion?: string
+  notesConfigured: boolean
   ready: boolean
+}
+
+export interface CoachGap {
+  gap: string
+  evidence: string
+  suggestion: string
 }
 
 export interface CoachUsage {
@@ -162,6 +172,7 @@ export interface CoachResult {
   ok: boolean
   reason?: string
   text?: string
+  gaps?: CoachGap[]
   usage?: CoachUsage
 }
 

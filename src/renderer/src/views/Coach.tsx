@@ -7,6 +7,13 @@ const MODEL_LABELS: Record<CoachModel, string> = {
   opus: 'Opus — deepest read'
 }
 
+interface FocusCard {
+  gap: string
+  evidence: string
+  suggestion: string
+  plan: string
+}
+
 interface Turn {
   role: 'user' | 'assistant'
   text: string
@@ -41,6 +48,9 @@ function Coach(): React.JSX.Element {
   const [running, setRunning] = useState(false)
   const [error, setError] = useState('')
   const [input, setInput] = useState('')
+  const [cards, setCards] = useState<FocusCard[]>([])
+  const [adviseProse, setAdviseProse] = useState('')
+  const [saveStatus, setSaveStatus] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -57,6 +67,11 @@ function Coach(): React.JSX.Element {
     setStreaming('')
     if (res.ok && res.text !== undefined) {
       setTurns((t) => [...t, { role: 'assistant', text: res.text!, usage: res.usage }])
+      // Only session reviews carry gaps — chat turns leave the cards alone.
+      if (res.gaps) {
+        setCards(res.gaps.map((g) => ({ ...g, plan: g.suggestion })))
+        setAdviseProse(res.text)
+      }
     } else {
       setError(REASON_TEXT[res.reason ?? ''] ?? `Coach failed: ${res.reason ?? 'unknown'}`)
     }
@@ -67,11 +82,26 @@ function Coach(): React.JSX.Element {
     setError('')
     setTurns([])
     setStreaming('')
+    setCards([])
+    setSaveStatus('')
     try {
       finish(await window.api.coachReport())
     } finally {
       setRunning(false)
     }
+  }
+
+  const saveFocuses = async (): Promise<void> => {
+    setSaveStatus('Saving…')
+    const res = await window.api.saveFocuses({
+      prose: adviseProse,
+      focuses: cards.map(({ gap, plan }) => ({ gap, plan }))
+    })
+    setSaveStatus(
+      res.ok
+        ? 'Saved to Progress.md and the session note.'
+        : `Save failed: ${res.reason ?? 'unknown'}`
+    )
   }
 
   const send = async (): Promise<void> => {
@@ -151,8 +181,9 @@ function Coach(): React.JSX.Element {
 
       {turns.length === 0 && !streaming && !error && (
         <p style={{ color: '#888' }}>
-          Generates a coaching read of your most recent analyzed session — pro gaps, trends, and up
-          to three focuses with drills. Then ask follow-ups below.
+          Reads your most recent analyzed session and surfaces the biggest gaps, each with a
+          suggested fix — keep the suggestion or write your own plan, then save your focuses to your
+          notes. Previous focuses from Progress.md shape the next session&apos;s advice.
         </p>
       )}
 
@@ -183,11 +214,78 @@ function Coach(): React.JSX.Element {
       {streaming && (
         <div style={{ border: '1px solid #333', borderRadius: 8, padding: 12, marginBottom: 8 }}>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 4 }}>Coach</div>
-          <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.5 }}>{streaming}</div>
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.5 }}>
+            {streaming.split('```json')[0]}
+          </div>
         </div>
       )}
 
       {error && <p style={{ color: '#f88' }}>{error}</p>}
+
+      {cards.length > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 8 }}>
+          <h3 style={{ fontSize: 14, margin: '4px 0' }}>
+            Focuses — keep each suggestion or write your own plan
+          </h3>
+          {cards.map((c, i) => (
+            <div
+              key={i}
+              style={{
+                border: '1px solid #2a5',
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 8
+              }}
+            >
+              <div style={{ marginBottom: 4 }}>
+                <strong>{c.gap}</strong>{' '}
+                <span style={{ color: '#888', fontSize: 12 }}>{c.evidence}</span>
+              </div>
+              <textarea
+                rows={2}
+                style={{ width: '100%', padding: 6, fontSize: 13, boxSizing: 'border-box' }}
+                value={c.plan}
+                onChange={(e) =>
+                  setCards((cs) => cs.map((x, j) => (j === i ? { ...x, plan: e.target.value } : x)))
+                }
+              />
+              {c.plan !== c.suggestion && (
+                <button
+                  style={{ fontSize: 11 }}
+                  onClick={() =>
+                    setCards((cs) => cs.map((x, j) => (j === i ? { ...x, plan: x.suggestion } : x)))
+                  }
+                >
+                  Reset to suggestion
+                </button>
+              )}
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              disabled={running || !status.notesConfigured || cards.some((c) => !c.plan.trim())}
+              onClick={saveFocuses}
+            >
+              Save focuses to notes
+            </button>
+            {!status.notesConfigured && (
+              <span style={{ color: '#888', fontSize: 12 }}>
+                set a notes folder in Settings to save these
+              </span>
+            )}
+            {saveStatus && (
+              <span
+                style={{
+                  fontSize: 13,
+                  color: saveStatus.startsWith('Save failed') ? '#f88' : '#6e9'
+                }}
+              >
+                {saveStatus}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {turns.length > 0 && (
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>

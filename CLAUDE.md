@@ -42,9 +42,11 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
   never a data store. Generated regions sit between `<!-- nojohns:begin/end -->`
   sentinels; everything outside is user text and must survive rewrites
   byte-for-byte. `notes/format.ts` mirrors coach.py's render_trends one-liners —
-  keep them in sync when the engine's renderer changes. The AI report is the
-  session note's `coach` block (notes:writeAi): only present in the template
-  when a fresh report was generated, so plain rewrites never clobber it.
+  keep them in sync when the engine's renderer changes. Coach outputs live in
+  two sentinel blocks written by notes:saveFocuses: the session note's `coach`
+  block (the read + agreed focuses) and Progress.md's `focuses` block (last 3
+  dated focus groups — fed back into the next coach:report as previous_notes).
+  Both enter the template only on a save, so plain rewrites never clobber them.
 
 ## Gotchas
 
@@ -75,7 +77,12 @@ it); src/main/coach/client.ts calls the Anthropic API (claude-opus-4-8,
 adaptive thinking, streamed over coach:delta, top-level cache_control,
 usage→cost + monthly spend in userData/coach/spend.json, transcripts saved
 there too); prompts/coach-system.md is bundled into main via ?raw import;
-Coach tab (report + chat, per-response cost, model tier picker —
+The coach is an ADVISOR, not a report generator: coach:report feeds
+session.txt + trends.txt + the vault's Progress.md (previous_notes) to the
+model, whose response ends in a fenced json gaps block (parsed by
+coach/advise.ts); the Coach tab renders editable focus cards (keep the
+suggestion or write your own plan) and "Save focuses to notes" persists the
+decisions. Coach tab (advise + chat, per-response cost, model tier picker —
 config.coachModel opus/sonnet/haiku, default sonnet since the engine already
 did the analysis; per-model pricing in client.ts, --model on the CLI).
 Second backend

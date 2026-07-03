@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { SetRecord } from '../../../preload/index.d'
 import { HEADLINE_METRICS } from '../metrics'
 
@@ -98,24 +98,16 @@ function SessionReport({
 }): React.JSX.Element {
   const [notesStatus, setNotesStatus] = useState('')
   const [writing, setWriting] = useState(false)
-  const [coachReady, setCoachReady] = useState(false)
 
-  useEffect(() => {
-    if (notesConfigured) window.api.coachStatus().then((s) => setCoachReady(s.ready))
-  }, [notesConfigured])
-
-  const writeNotes = async (withAi: boolean): Promise<void> => {
+  const writeNotes = async (): Promise<void> => {
     setWriting(true)
-    setNotesStatus(withAi ? 'Coach is reading the session…' : 'Writing…')
+    setNotesStatus('Writing…')
     try {
-      const res = withAi
-        ? await window.api.writeNotesAi(sessionFile)
-        : await window.api.writeNotes(sessionFile)
+      const res = await window.api.writeNotes(sessionFile)
       if (res.ok) {
         const n = res.written?.length ?? 0
-        const cost = res.usage ? ` · $${res.usage.costUsd.toFixed(3)}` : ''
         setNotesStatus(
-          n > 0 ? `Notes written (${n} file${n === 1 ? '' : 's'})${cost}` : 'Notes up to date'
+          n > 0 ? `Notes written (${n} file${n === 1 ? '' : 's'})` : 'Notes up to date'
         )
       } else {
         setNotesStatus(`Notes failed: ${res.reason ?? 'unknown'}`)
@@ -130,17 +122,8 @@ function SessionReport({
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <button onClick={onBack}>← Dashboard</button>
         {notesConfigured && (
-          <button disabled={writing} onClick={() => writeNotes(false)}>
+          <button disabled={writing} onClick={writeNotes}>
             Write notes
-          </button>
-        )}
-        {notesConfigured && coachReady && (
-          <button
-            disabled={writing}
-            title="Also generates an AI coaching read and saves it in the session note"
-            onClick={() => writeNotes(true)}
-          >
-            Write notes + AI read
           </button>
         )}
         {notesStatus && (
