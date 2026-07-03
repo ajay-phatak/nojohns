@@ -70,8 +70,9 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
 
 ## Roadmap state
 
-Tier 1 shipped as v0.1.1; tier 2 (notes) shipped as v0.2.0. Phase C (AI coach)
-implemented, unreleased: key via safeStorage ciphertext in userData/coach.key
+Tier 1 shipped as v0.1.1; tier 2 (notes) shipped as v0.2.0; tier 3 (AI coach)
+shipped as v0.3.0 — iterating on friend feedback next.
+Coach details: key via safeStorage ciphertext in userData/coach.key
 (deliberately NOT in config.json so the renderer can never see or clobber
 it); src/main/coach/client.ts calls the Anthropic API (claude-opus-4-8,
 adaptive thinking, streamed over coach:delta, top-level cache_control,
@@ -92,8 +93,8 @@ Pro/Max plan — prompt goes over stdin (never argv), --resume for chat,
 ANTHROPIC_API_KEY stripped from child env so it can't silently bill credits,
 CLI probed at ~/.local/bin + %APPDATA%\npm since Electron's PATH misses
 them. Never lift Claude Code's OAuth token for direct API calls (ToS).
-Remaining before release:
-E2E with a real key (verify cache_read_input_tokens > 0 on chat turns),
-iterate the prompt on real sessions, decide the soft spend-warning UX.
-Deferred: code signing (Azure Trusted Signing), full auto-update via
-electron-updater (blocked on signing).
+Post-release iteration list: E2E the API-key backend with a real key (verify
+cache_read_input_tokens > 0 on chat turns), iterate the advisor prompt on
+real sessions, decide the soft spend-warning UX. Deferred: code signing
+(Azure Trusted Signing), full auto-update via electron-updater (blocked on
+signing).
