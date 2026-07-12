@@ -1,4 +1,4 @@
-# v0.4.0 visual redesign — brief & plan
+# v0.3.1 visual redesign — brief & plan
 
 Working doc for the redesign release. `design-prompt.md` next to this file is the
 self-contained prompt to hand to a Claude design session; this file is the
@@ -71,7 +71,7 @@ default h2/h3. Radii: 4px controls, 6–8px cards.
    found: `.nav button:hover` needed `:not(.active)` or it out-specifies the
    active state. Not visually verified: Coach chat/focus-card states (need a
    live report) and Onboarding — check on next real use.
-5. **Release** — bump to v0.4.0, tag, publish the draft **with** `latest.yml`.
+5. **Release** — bump to v0.3.1, tag, publish the draft **with** `latest.yml`.
 
 ### Implementation constraints (also baked into the prompt)
 
