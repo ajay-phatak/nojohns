@@ -59,15 +59,15 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
   const ok = doctorRes?.exitCode === 0 && (doctorRes.result?.code_seen_in ?? 0) > 0
 
   return (
-    <div style={{ maxWidth: 560, margin: '48px auto', fontFamily: 'system-ui', color: '#eee' }}>
+    <div className="onboard">
       <h1>Welcome to No Johns</h1>
-      <p style={{ color: '#aaa' }}>Data instead of excuses. Three quick steps.</p>
+      <p className="dim">Data instead of excuses. Three quick steps.</p>
 
       {step === 1 && (
         <section>
           <h2>1. Where are your Slippi replays?</h2>
           {detection?.replayFolder && (
-            <p style={{ color: '#8fc', fontSize: 13 }}>
+            <p className="live small">
               Detected from Slippi Launcher — change it if it looks wrong.
             </p>
           )}
@@ -77,11 +77,16 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
             onChange={(e) => setFolder(e.target.value)}
             placeholder="C:\Users\you\Documents\Slippi"
           />
-          <p style={{ color: '#888', fontSize: 12 }}>
+          <p className="muted tiny">
             Point at your main Slippi folder — if it has monthly subfolders (2026-07, …), the newest
             month is used automatically on every analysis.
           </p>
-          <button style={{ marginTop: 12 }} disabled={!folder} onClick={() => setStep(2)}>
+          <button
+            className="btn-primary"
+            style={{ marginTop: 12 }}
+            disabled={!folder}
+            onClick={() => setStep(2)}
+          >
             Next
           </button>
         </section>
@@ -91,7 +96,7 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
         <section>
           <h2>2. What&apos;s your connect code?</h2>
           {detection && detection.codeSuggestions.length > 0 && (
-            <p style={{ fontSize: 13, color: '#aaa' }}>
+            <p className="small dim">
               Recently seen codes:{' '}
               {detection.codeSuggestions.slice(0, 6).map((c) => (
                 <button key={c} style={{ margin: 2 }} onClick={() => setCode(c)}>
@@ -110,7 +115,7 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
             {checking ? 'Checking…' : 'Check'}
           </button>
           {doctorRes && (
-            <p style={{ color: ok ? '#8fc' : '#f88', fontSize: 13 }}>
+            <p className={`small ${ok ? 'live' : 'neg'}`}>
               {doctorRes.error?.msg ??
                 (ok
                   ? `Found ${doctorRes.result?.slp_count} replays — ${code} seen in ` +
@@ -121,7 +126,7 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
           )}
           <div style={{ marginTop: 12 }}>
             <button onClick={() => setStep(1)}>Back</button>{' '}
-            <button disabled={!ok} onClick={() => setStep(3)}>
+            <button className="btn-primary" disabled={!ok} onClick={() => setStep(3)}>
               Next
             </button>
           </div>
@@ -132,46 +137,36 @@ function Onboarding({ onDone }: Props): React.JSX.Element {
         <section>
           <h2>3. Who do you play, and against what?</h2>
           <p>Your character(s) — pick all your mains (up to 4):</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          <div className="toggle-row">
             {CHARACTERS.map((c) => (
               <button
                 key={c.name}
                 onClick={() => toggleCharacter(c.name)}
-                style={{
-                  padding: '4px 8px',
-                  background: characters.includes(c.name) ? '#26a' : '#333',
-                  color: '#eee',
-                  border: '1px solid #555'
-                }}
+                className={characters.includes(c.name) ? 'on-main' : undefined}
               >
                 {c.name}
               </button>
             ))}
           </div>
           <p style={{ marginTop: 12 }}>Common opponents (up to 8):</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          <div className="toggle-row">
             {CHARACTERS.map((c) => (
               <button
                 key={c.name}
                 onClick={() => toggleMatchup(c.name)}
-                style={{
-                  padding: '4px 8px',
-                  background: matchups.includes(c.name) ? '#2a6' : '#333',
-                  color: '#eee',
-                  border: '1px solid #555'
-                }}
+                className={matchups.includes(c.name) ? 'on-opp' : undefined}
               >
                 {c.name}
               </button>
             ))}
           </div>
-          <p style={{ fontSize: 13, color: '#aaa', marginTop: 8 }}>
+          <p className="small dim" style={{ marginTop: 8 }}>
             You can download pro replays for these matchups from the dashboard — highly recommended,
             it&apos;s what powers the you-vs-pros comparison.
           </p>
           <div style={{ marginTop: 12 }}>
             <button onClick={() => setStep(2)}>Back</button>{' '}
-            <button disabled={characters.length === 0} onClick={finish}>
+            <button className="btn-primary" disabled={characters.length === 0} onClick={finish}>
               Finish
             </button>
           </div>

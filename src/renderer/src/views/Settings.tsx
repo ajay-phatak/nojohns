@@ -10,12 +10,12 @@ interface Props {
 function TogglePicker({
   selected,
   cap,
-  color,
+  onClass,
   onChange
 }: {
   selected: string[]
   cap: number
-  color: string
+  onClass: 'on-main' | 'on-opp'
   onChange: (next: string[]) => void
 }): React.JSX.Element {
   const toggle = (name: string): void =>
@@ -25,17 +25,12 @@ function TogglePicker({
         : [...selected, name].slice(0, cap)
     )
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+    <div className="toggle-row">
       {CHARACTERS.map((c) => (
         <button
           key={c.name}
           onClick={() => toggle(c.name)}
-          style={{
-            padding: '4px 8px',
-            background: selected.includes(c.name) ? color : '#333',
-            color: '#eee',
-            border: '1px solid #555'
-          }}
+          className={selected.includes(c.name) ? onClass : undefined}
         >
           {c.name}
         </button>
@@ -113,7 +108,7 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
         value={folder}
         onChange={(e) => setFolder(e.target.value)}
       />
-      <p style={{ color: '#888', fontSize: 12, marginTop: 4 }}>
+      <p className="muted tiny" style={{ marginTop: 4 }}>
         Point at your main Slippi folder — if it has monthly subfolders (2026-07, …), analysis
         always uses the newest month. Picking a month folder directly pins you to it.
       </p>
@@ -126,13 +121,13 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
       />
 
       <h4>Your character(s) — up to 4</h4>
-      <TogglePicker selected={mains} cap={4} color="#26a" onChange={setMains} />
+      <TogglePicker selected={mains} cap={4} onClass="on-main" onChange={setMains} />
 
       <h4>Common opponents — up to 8</h4>
-      <TogglePicker selected={matchups} cap={8} color="#2a6" onChange={setMatchups} />
+      <TogglePicker selected={matchups} cap={8} onClass="on-opp" onChange={setMatchups} />
 
       <h4>Notes folder</h4>
-      <p style={{ color: '#888', fontSize: 13, marginTop: -8 }}>
+      <p className="muted small" style={{ marginTop: -8 }}>
         Any folder works — point it at an Obsidian vault to get session, matchup, and progress notes
         there. Your own text in the notes is preserved when they regenerate.
       </p>
@@ -145,7 +140,7 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
         />
         <button onClick={browseNotes}>Browse…</button>
       </div>
-      <label style={{ display: 'block', marginTop: 8, fontSize: 13, color: '#aaa' }}>
+      <label className="check-label" style={{ marginTop: 8 }}>
         <input
           type="checkbox"
           checked={autoWrite}
@@ -156,7 +151,7 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
       </label>
 
       <h4>AI coach (optional)</h4>
-      <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 4 }}>
+      <label className="check-label" style={{ marginBottom: 4 }}>
         <input
           type="radio"
           name="coachBackend"
@@ -164,7 +159,7 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
           onChange={() => setBackend('claude-cli')}
         />{' '}
         Claude Code — uses your Pro/Max plan, no API credits
-        <span style={{ marginLeft: 8, color: cli?.found ? '#6e9' : '#c94', fontSize: 12 }}>
+        <span className={`tiny ${cli?.found ? 'pos' : 'warn'}`} style={{ marginLeft: 8 }}>
           {cli === null
             ? 'checking…'
             : cli.found
@@ -172,7 +167,7 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
               : 'not found — install Claude Code and log in'}
         </span>
       </label>
-      <label style={{ display: 'block', fontSize: 13, color: '#aaa' }}>
+      <label className="check-label">
         <input
           type="radio"
           name="coachBackend"
@@ -183,15 +178,13 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
       </label>
       {backend === 'api' && (
         <div style={{ marginTop: 8 }}>
-          <p style={{ color: '#888', fontSize: 13, marginTop: 0 }}>
+          <p className="muted small" style={{ marginTop: 0 }}>
             Stored encrypted with your OS keychain, only ever used to call the Anthropic API from
             this machine. Saved immediately — no need to hit Save.
           </p>
           {keyStatus?.configured ? (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ color: '#6e9', fontSize: 13 }}>
-                Key saved (····{keyStatus.last4 ?? ''})
-              </span>
+            <div className="row">
+              <span className="pos small">Key saved (····{keyStatus.last4 ?? ''})</span>
               <button onClick={clearKey}>Remove key</button>
             </div>
           ) : (
@@ -208,15 +201,19 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
               </button>
             </div>
           )}
-          {keyError && <p style={{ color: '#f88', fontSize: 13 }}>{keyError}</p>}
+          {keyError && <p className="neg small">{keyError}</p>}
         </div>
       )}
 
       <div style={{ marginTop: 16 }}>
-        <button disabled={!folder || !code || mains.length === 0} onClick={save}>
+        <button
+          className="btn-primary"
+          disabled={!folder || !code || mains.length === 0}
+          onClick={save}
+        >
           Save
         </button>{' '}
-        {saved && <span style={{ color: '#6e9' }}>Saved.</span>}
+        {saved && <span className="pos">Saved.</span>}
       </div>
     </div>
   )

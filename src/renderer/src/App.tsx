@@ -22,53 +22,43 @@ function App(): React.JSX.Element {
     })
   }, [])
 
-  if (!config) return <p style={{ color: '#aaa', padding: 24 }}>Loading…</p>
+  if (!config)
+    return (
+      <p className="dim" style={{ padding: 24 }}>
+        Loading…
+      </p>
+    )
   if (!config.onboarded) return <Onboarding onDone={setConfig} />
 
   return (
-    <div style={{ padding: 24, fontFamily: 'system-ui', color: '#eee' }}>
-      {update && (
-        <div
-          style={{
-            background: '#1d3a5f',
-            border: '1px solid #2a6ac2',
-            borderRadius: 6,
-            padding: '8px 12px',
-            marginBottom: 12,
-            fontSize: 13
-          }}
-        >
-          v{update.latest} is available (you have v{update.current}) —{' '}
-          <a href={update.url} target="_blank" rel="noreferrer" style={{ color: '#7bf' }}>
-            download it here
-          </a>
-          .{' '}
-          <button style={{ marginLeft: 8, fontSize: 12 }} onClick={() => setUpdate(null)}>
-            Dismiss
-          </button>
-        </div>
-      )}
-      <nav style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+    <div className="app">
+      <nav className="nav">
+        <span className="brand">No Johns</span>
         {VIEWS.map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{
-              padding: '6px 12px',
-              background: view === v ? '#26a' : '#333',
-              color: '#eee',
-              border: '1px solid #555'
-            }}
-          >
+          <button key={v} onClick={() => setView(v)} className={view === v ? 'active' : undefined}>
             {v}
           </button>
         ))}
       </nav>
-      {view === 'Dashboard' && <Dashboard config={config} />}
-      {view === 'Matchups' && <Matchups config={config} />}
-      {view === 'Pro Replays' && <ProReplays config={config} />}
-      {view === 'Coach' && <Coach />}
-      {view === 'Settings' && <Settings config={config} onSaved={setConfig} />}
+      <main className="main">
+        {update && (
+          <div className="banner-info">
+            v{update.latest} is available (you have v{update.current}) —{' '}
+            <a href={update.url} target="_blank" rel="noreferrer">
+              download it here
+            </a>
+            .{' '}
+            <button className="btn-sm" style={{ marginLeft: 8 }} onClick={() => setUpdate(null)}>
+              Dismiss
+            </button>
+          </div>
+        )}
+        {view === 'Dashboard' && <Dashboard config={config} />}
+        {view === 'Matchups' && <Matchups config={config} />}
+        {view === 'Pro Replays' && <ProReplays config={config} />}
+        {view === 'Coach' && <Coach />}
+        {view === 'Settings' && <Settings config={config} onSaved={setConfig} />}
+      </main>
     </div>
   )
 }

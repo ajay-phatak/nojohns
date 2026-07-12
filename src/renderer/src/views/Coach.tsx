@@ -34,7 +34,7 @@ const REASON_TEXT: Record<string, string> = {
 
 function CostLine({ usage }: { usage: CoachUsage }): React.JSX.Element {
   return (
-    <div style={{ color: '#666', fontSize: 11, marginTop: 4 }}>
+    <div className="cost-line">
       ${usage.costUsd.toFixed(3)} this response · ${usage.monthUsd.toFixed(2)} this month
       {usage.cacheReadTokens > 0 && ' · cached'}
     </div>
@@ -118,23 +118,15 @@ function Coach(): React.JSX.Element {
     }
   }
 
-  if (status === null) return <p style={{ color: '#888' }}>Loading…</p>
+  if (status === null) return <p className="muted">Loading…</p>
 
   if (!status.ready) {
     return (
       <div>
         <h2>Coach</h2>
-        <div
-          style={{
-            border: '1px dashed #444',
-            borderRadius: 8,
-            padding: 16,
-            color: '#888',
-            maxWidth: 560
-          }}
-        >
-          🤖 <strong style={{ color: '#aaa' }}>AI coach</strong> — get a written coaching report
-          after each session, plus a chat to dig into the details.{' '}
+        <div className="callout callout-lg">
+          🤖 <strong>AI coach</strong> — get a written coaching report after each session, plus a
+          chat to dig into the details.{' '}
           {status.backend === 'claude-cli' ? (
             <>
               Claude Code wasn&apos;t detected on this machine — install it and log in with your
@@ -155,9 +147,9 @@ function Coach(): React.JSX.Element {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 720 }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Coach</h2>
-        <button disabled={running} onClick={report}>
+      <div className="row" style={{ marginBottom: 12 }}>
+        <h2 className="h-inline">Coach</h2>
+        <button className="btn-primary" disabled={running} onClick={report}>
           {turns.length === 0 ? 'Coach my latest session' : 'New report'}
         </button>
         <select
@@ -176,11 +168,11 @@ function Coach(): React.JSX.Element {
             </option>
           ))}
         </select>
-        {running && <span style={{ color: '#8fc', fontSize: 13 }}>Thinking…</span>}
+        {running && <span className="live small">Thinking…</span>}
       </div>
 
       {turns.length === 0 && !streaming && !error && (
-        <p style={{ color: '#888' }}>
+        <p className="muted">
           Reads your most recent analyzed session and surfaces the biggest gaps, each with a
           suggested fix — keep the suggestion or write your own plan, then save your focuses to your
           notes. Previous focuses from Progress.md shape the next session&apos;s advice.
@@ -188,62 +180,39 @@ function Coach(): React.JSX.Element {
       )}
 
       {turns.map((t, i) => (
-        <div
-          key={i}
-          style={{
-            border: '1px solid #333',
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 8,
-            background: t.role === 'user' ? '#20242c' : 'transparent'
-          }}
-        >
-          <div style={{ color: '#888', fontSize: 11, marginBottom: 4 }}>
-            {t.role === 'user' ? 'You' : 'Coach'}
-          </div>
-          <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.5 }}>{t.text}</div>
+        <div key={i} className={t.role === 'user' ? 'card card-user' : 'card'}>
+          <div className="role-label">{t.role === 'user' ? 'You' : 'Coach'}</div>
+          <div className="msg-text">{t.text}</div>
           {t.usage && <CostLine usage={t.usage} />}
           {!t.usage && t.role === 'assistant' && status.backend === 'claude-cli' && (
-            <div style={{ color: '#666', fontSize: 11, marginTop: 4 }}>
-              covered by your Claude plan
-            </div>
+            <div className="cost-line">covered by your Claude plan</div>
           )}
         </div>
       ))}
 
       {streaming && (
-        <div style={{ border: '1px solid #333', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-          <div style={{ color: '#888', fontSize: 11, marginBottom: 4 }}>Coach</div>
-          <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.5 }}>
-            {streaming.split('```json')[0]}
-          </div>
+        <div className="card">
+          <div className="role-label">Coach</div>
+          <div className="msg-text">{streaming.split('```json')[0]}</div>
         </div>
       )}
 
-      {error && <p style={{ color: '#f88' }}>{error}</p>}
+      {error && <p className="neg">{error}</p>}
 
       {cards.length > 0 && (
         <div style={{ marginTop: 8, marginBottom: 8 }}>
-          <h3 style={{ fontSize: 14, margin: '4px 0' }}>
+          <h3 className="eyebrow" style={{ margin: '12px 0 8px' }}>
             Focuses — keep each suggestion or write your own plan
           </h3>
           {cards.map((c, i) => (
-            <div
-              key={i}
-              style={{
-                border: '1px solid #2a5',
-                borderRadius: 8,
-                padding: 12,
-                marginBottom: 8
-              }}
-            >
+            <div key={i} className="card card-focus">
               <div style={{ marginBottom: 4 }}>
-                <strong>{c.gap}</strong>{' '}
-                <span style={{ color: '#888', fontSize: 12 }}>{c.evidence}</span>
+                <strong>{c.gap}</strong> <span className="muted tiny">{c.evidence}</span>
               </div>
               <textarea
                 rows={2}
-                style={{ width: '100%', padding: 6, fontSize: 13, boxSizing: 'border-box' }}
+                className="small"
+                style={{ width: '100%', padding: 6, boxSizing: 'border-box' }}
                 value={c.plan}
                 onChange={(e) =>
                   setCards((cs) => cs.map((x, j) => (j === i ? { ...x, plan: e.target.value } : x)))
@@ -251,7 +220,7 @@ function Coach(): React.JSX.Element {
               />
               {c.plan !== c.suggestion && (
                 <button
-                  style={{ fontSize: 11 }}
+                  className="btn-xs"
                   onClick={() =>
                     setCards((cs) => cs.map((x, j) => (j === i ? { ...x, plan: x.suggestion } : x)))
                   }
@@ -261,7 +230,7 @@ function Coach(): React.JSX.Element {
               )}
             </div>
           ))}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="row">
             <button
               disabled={running || !status.notesConfigured || cards.some((c) => !c.plan.trim())}
               onClick={saveFocuses}
@@ -269,17 +238,10 @@ function Coach(): React.JSX.Element {
               Save focuses to notes
             </button>
             {!status.notesConfigured && (
-              <span style={{ color: '#888', fontSize: 12 }}>
-                set a notes folder in Settings to save these
-              </span>
+              <span className="muted tiny">set a notes folder in Settings to save these</span>
             )}
             {saveStatus && (
-              <span
-                style={{
-                  fontSize: 13,
-                  color: saveStatus.startsWith('Save failed') ? '#f88' : '#6e9'
-                }}
-              >
+              <span className={`small ${saveStatus.startsWith('Save failed') ? 'neg' : 'pos'}`}>
                 {saveStatus}
               </span>
             )}
@@ -299,7 +261,7 @@ function Coach(): React.JSX.Element {
               if (e.key === 'Enter') send()
             }}
           />
-          <button disabled={running || !input.trim()} onClick={send}>
+          <button className="btn-primary" disabled={running || !input.trim()} onClick={send}>
             Send
           </button>
         </div>

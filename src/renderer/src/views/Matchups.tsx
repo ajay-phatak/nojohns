@@ -23,13 +23,13 @@ function TopList({ title, dist }: { title: string; dist: unknown }): React.JSX.E
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
   return (
-    <div style={{ minWidth: 180 }}>
-      <h5 style={{ margin: '4px 0', color: '#888' }}>{title}</h5>
-      {entries.length === 0 && <p style={{ fontSize: 12, color: '#666' }}>—</p>}
+    <div className="top-list">
+      <h5>{title}</h5>
+      {entries.length === 0 && <p className="tiny faint">—</p>}
       {entries.map(([label, n]) => (
-        <div key={label} style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+        <div key={label} className="top-list-row">
           <span>{label}</span>
-          <span style={{ color: '#888' }}>{n}</span>
+          <span className="muted">{n}</span>
         </div>
       ))}
     </div>
@@ -67,12 +67,12 @@ function Matchups({ config }: { config: AppConfig }): React.JSX.Element {
     })
   }, [])
 
-  if (!loaded) return <p style={{ color: '#888' }}>Loading…</p>
+  if (!loaded) return <p className="muted">Loading…</p>
   if (!trends || !trends.matchups || Object.keys(trends.matchups).length === 0) {
     return (
       <div>
         <h2>Matchups</h2>
-        <p style={{ color: '#888' }}>
+        <p className="muted">
           No history yet — analyze a few sessions and your per-matchup record builds up here.
         </p>
       </div>
@@ -84,39 +84,37 @@ function Matchups({ config }: { config: AppConfig }): React.JSX.Element {
   return (
     <div>
       <h2>Matchups</h2>
-      <p style={{ color: '#888', fontSize: 13 }}>
+      <p className="muted small">
         {trends.n_sets} sets over {trends.n_sessions} sessions, most-played first.
       </p>
-      {noteError && <p style={{ color: '#c94', fontSize: 13 }}>{noteError}</p>}
+      {noteError && <p className="warn small">{noteError}</p>}
       {sorted.map(([name, mu]) => {
         const gp = mu.gameplan ?? {}
         return (
-          <div
-            key={name}
-            style={{ border: '1px solid #333', borderRadius: 8, padding: 16, marginBottom: 16 }}
-          >
-            <h3 style={{ marginTop: 0 }}>
+          <div key={name} className="card card-lg">
+            <h3>
               {name}{' '}
-              <span style={{ color: mu.wins >= mu.losses ? '#6e9' : '#f88' }}>
+              <span className={`record ${mu.wins >= mu.losses ? 'pos' : 'neg'}`}>
                 {mu.wins}–{mu.losses}
               </span>{' '}
-              <span style={{ color: '#888', fontWeight: 'normal', fontSize: 14 }}>
+              <span className="h-sub">
                 · {mu.games} games · {mu.sessions} session(s)
               </span>
               {config.notesFolder && (
                 <button
                   onClick={() => openNote(name)}
-                  style={{ marginLeft: 12, fontSize: 12, padding: '2px 8px' }}
+                  className="btn-sm"
+                  style={{ marginLeft: 12 }}
                 >
                   Open note
                 </button>
               )}
             </h3>
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
+            <div className="small" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               {Object.entries(HEADLINE_LABELS).map(([key, label]) =>
                 mu.headline[key] !== null && mu.headline[key] !== undefined ? (
                   <span key={key}>
-                    <span style={{ color: '#888' }}>{label}:</span> {mu.headline[key]}
+                    <span className="muted">{label}:</span> {mu.headline[key]}
                   </span>
                 ) : null
               )}

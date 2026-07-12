@@ -80,26 +80,26 @@ function ProReplays({ config }: { config: AppConfig }): React.JSX.Element {
   return (
     <div>
       <h2>Pro replays</h2>
-      <p style={{ color: '#aaa', fontSize: 13 }}>
+      <p className="dim small">
         Downloads professional games for your matchups — this is what powers the you-vs-pros
         comparison. ~{FETCH_LIMIT} games per matchup, a few minutes each. Total on disk:{' '}
         {fmtMB(totalBytes)}.
       </p>
-      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+      <table className="table-loose">
         <tbody>
           {rows.map((row) => {
             const s = status[row.dirName]
             const busy = fetching === row.dirName
             return (
-              <tr key={row.dirName} style={{ borderBottom: '1px solid #333' }}>
-                <td style={{ padding: 8 }}>{row.label}</td>
-                <td style={{ padding: 8, color: (s?.count ?? 0) > 0 ? '#8fc' : '#f88' }}>
+              <tr key={row.dirName}>
+                <td>{row.label}</td>
+                <td className={(s?.count ?? 0) > 0 ? 'live' : 'neg'}>
                   {s ? `${s.count} replays (${fmtMB(s.bytes)})` : '…'}
                 </td>
-                <td style={{ padding: 8 }}>
+                <td>
                   {busy ? (
                     <>
-                      <span style={{ color: '#8fc', fontSize: 12, marginRight: 8 }}>
+                      <span className="live tiny" style={{ marginRight: 8 }}>
                         {progress}
                       </span>
                       <button onClick={() => window.api.cancelFetch()}>Cancel</button>
@@ -115,9 +115,7 @@ function ProReplays({ config }: { config: AppConfig }): React.JSX.Element {
           })}
         </tbody>
       </table>
-      {rows.length === 0 && (
-        <p style={{ color: '#f88' }}>No matchups configured — pick them in Settings.</p>
-      )}
+      {rows.length === 0 && <p className="neg">No matchups configured — pick them in Settings.</p>}
     </div>
   )
 }

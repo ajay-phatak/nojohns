@@ -16,15 +16,7 @@ function GapChip({
   const good = higherIsBetter ? gap >= 0 : gap <= 0
   const shown = Math.abs(gap) < 0.05 ? '=' : `${gap > 0 ? '+' : ''}${gap.toFixed(1)}`
   return (
-    <span
-      style={{
-        padding: '1px 8px',
-        borderRadius: 10,
-        fontSize: 12,
-        background: shown === '=' ? '#444' : good ? '#153' : '#511',
-        color: shown === '=' ? '#aaa' : good ? '#6e9' : '#f88'
-      }}
-    >
+    <span className={`chip ${shown === '=' ? 'chip-even' : good ? 'chip-good' : 'chip-bad'}`}>
       {shown}
     </span>
   )
@@ -33,30 +25,30 @@ function GapChip({
 function SetCard({ set }: { set: SetRecord }): React.JSX.Element {
   const record = `${set.wins}–${set.losses}`
   return (
-    <div style={{ border: '1px solid #333', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-      <h3 style={{ marginTop: 0 }}>
+    <div className="card card-lg">
+      <h3>
         {set.my_char} vs {set.opp_char}{' '}
-        <span style={{ color: set.wins >= set.losses ? '#6e9' : '#f88' }}>{record}</span>{' '}
-        <span style={{ color: '#888', fontWeight: 'normal', fontSize: 14 }}>
+        <span className={`record ${set.wins >= set.losses ? 'pos' : 'neg'}`}>{record}</span>{' '}
+        <span className="h-sub">
           · {set.opp_code} · {set.n_games} games · {set.session_date}
         </span>
       </h3>
       {set.pro_baseline ? (
-        <p style={{ color: '#888', fontSize: 12 }}>
+        <p className="muted tiny">
           Pro baseline: {set.pro_games} games on {[...new Set(set.stages)].join(', ')}
         </p>
       ) : (
-        <p style={{ color: '#c94', fontSize: 12 }}>
+        <p className="warn tiny">
           No pro baseline for this matchup yet — download replays in the Pro Replays tab.
         </p>
       )}
-      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+      <table className="table">
         <thead>
-          <tr style={{ color: '#888', textAlign: 'left' }}>
-            <th style={{ padding: 4 }}>Metric</th>
-            <th style={{ padding: 4 }}>You</th>
-            <th style={{ padding: 4 }}>Pros</th>
-            <th style={{ padding: 4 }}>Gap</th>
+          <tr>
+            <th>Metric</th>
+            <th>You</th>
+            <th>Pros</th>
+            <th>Gap</th>
           </tr>
         </thead>
         <tbody>
@@ -67,11 +59,11 @@ function SetCard({ set }: { set: SetRecord }): React.JSX.Element {
             const fmt = (v: number | null): string =>
               v === null ? '—' : `${v.toFixed(m.decimals)}${m.unit}`
             return (
-              <tr key={m.key} style={{ borderTop: '1px solid #2a2a2a' }}>
-                <td style={{ padding: 4 }}>{m.label}</td>
-                <td style={{ padding: 4 }}>{fmt(mine)}</td>
-                <td style={{ padding: 4, color: '#888' }}>{fmt(pro)}</td>
-                <td style={{ padding: 4 }}>
+              <tr key={m.key}>
+                <td>{m.label}</td>
+                <td>{fmt(mine)}</td>
+                <td className="muted">{fmt(pro)}</td>
+                <td>
                   <GapChip mine={mine} pro={pro} higherIsBetter={m.higherIsBetter} />
                 </td>
               </tr>
@@ -119,7 +111,7 @@ function SessionReport({
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="row">
         <button onClick={onBack}>← Dashboard</button>
         {notesConfigured && (
           <button disabled={writing} onClick={writeNotes}>
@@ -127,12 +119,7 @@ function SessionReport({
           </button>
         )}
         {notesStatus && (
-          <span
-            style={{
-              fontSize: 13,
-              color: notesStatus.startsWith('Notes failed') ? '#f88' : '#6e9'
-            }}
-          >
+          <span className={`small ${notesStatus.startsWith('Notes failed') ? 'neg' : 'pos'}`}>
             {notesStatus}
           </span>
         )}

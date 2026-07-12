@@ -59,14 +59,14 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
   return (
     <div>
       <h2>Dashboard</h2>
-      <p style={{ color: '#aaa' }}>
+      <p className="subtitle">
         {config.mainCharacters.join(' / ')} · {config.connectCode}
       </p>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
-        <button disabled={running} onClick={run}>
+      <div className="row" style={{ marginBottom: 16 }}>
+        <button className="btn-primary" disabled={running} onClick={run}>
           {running ? 'Analyzing…' : 'Analyze recent games'}
         </button>
-        <label style={{ fontSize: 13, color: '#aaa' }}>
+        <label className="small dim">
           last{' '}
           <select value={sets} onChange={(e) => setSets(Number(e.target.value))}>
             {[1, 2, 3, 5, 8].map((n) => (
@@ -77,30 +77,21 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
           </select>{' '}
           set(s)
         </label>
-        {progress && <span style={{ color: '#8fc', fontSize: 13 }}>{progress}</span>}
+        {progress && <span className="live small">{progress}</span>}
       </div>
-      {error && <p style={{ color: '#f88' }}>{error}</p>}
+      {error && <p className="neg">{error}</p>}
 
       {!config.notesFolder && (
-        <div
-          style={{
-            border: '1px dashed #444',
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 16,
-            color: '#888',
-            fontSize: 13
-          }}
-        >
-          📝 <strong style={{ color: '#aaa' }}>Notes</strong> — point No Johns at a folder (an
-          Obsidian vault works) in Settings and it writes markdown notes per session and matchup,
-          with room for your own observations.
+        <div className="callout">
+          📝 <strong>Notes</strong> — point No Johns at a folder (an Obsidian vault works) in
+          Settings and it writes markdown notes per session and matchup, with room for your own
+          observations.
         </div>
       )}
 
-      <h3>Recent sessions</h3>
+      <h3 className="eyebrow">Recent sessions</h3>
       {sessions.length === 0 && (
-        <p style={{ color: '#888' }}>None yet — hit Analyze after a session of netplay.</p>
+        <p className="muted">None yet — hit Analyze after a session of netplay.</p>
       )}
       {sessions.map((s) => {
         const wins = s.sets.reduce((n, x) => n + x.wins, 0)
@@ -110,19 +101,17 @@ function Dashboard({ config }: { config: AppConfig }): React.JSX.Element {
           <div
             key={s.file}
             onClick={() => setOpen({ title: s.generated_at, sets: s.sets, file: s.file })}
-            style={{
-              border: '1px solid #333',
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 8,
-              cursor: 'pointer'
-            }}
+            className="card card-click"
           >
-            <strong>{s.generated_at}</strong>{' '}
-            <span style={{ color: wins >= losses ? '#6e9' : '#f88' }}>
-              {wins}–{losses}
-            </span>
-            <div style={{ color: '#888', fontSize: 13 }}>{matchups.join(' · ')}</div>
+            <div className="row-between">
+              <span>
+                <strong className="mono">{s.generated_at}</strong>{' '}
+                <span className={`record ${wins >= losses ? 'pos' : 'neg'}`}>
+                  {wins}–{losses}
+                </span>
+              </span>
+              <span className="matchups">{matchups.join(' · ')}</span>
+            </div>
           </div>
         )
       })}
