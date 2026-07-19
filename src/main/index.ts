@@ -6,6 +6,7 @@ import icon from '../../resources/icon.png?asset'
 import { EngineJob, EngineEvent } from './engine'
 import { loadConfig, saveConfig, dataDir, AppConfig } from './config'
 import { detectSlippi } from './slippi-detect'
+import { queuePlayback, playbackStatus, Moment } from './playback'
 import { writeSessionNotes } from './notes/write'
 import type { TrendsData } from './notes/render'
 import { setKey, clearKey, keyStatus } from './coach/key'
@@ -375,6 +376,10 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('coach:hasConversation', () => hasConversation() || hasCliConversation())
+
+  // Queue "watch these moments" clips in Slippi's playback Dolphin.
+  ipcMain.handle('playback:queue', (_e, moments: Moment[]) => queuePlayback(moments))
+  ipcMain.handle('playback:status', () => playbackStatus())
 
   ipcMain.handle('config:get', () => loadConfig())
   ipcMain.handle('config:set', (_e, patch: Partial<AppConfig>) => saveConfig(patch))

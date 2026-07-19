@@ -1,6 +1,6 @@
 {
   "name": "nojohns",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "No Johns — Melee coaching app: your Slippi replays vs the pro ceiling",
   "main": "./out/main/index.js",
   "author": "Ajay Phatak",

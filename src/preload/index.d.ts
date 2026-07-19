@@ -12,6 +12,17 @@ export interface EngineEvent {
 
 export type Metrics = Record<string, number | null>
 
+export interface Moment {
+  kind: 'death' | 'missed_edgeguard' | 'best_punish'
+  path: string
+  file: string
+  game_index: number
+  frame: number
+  start_frame: number
+  end_frame: number
+  label: string
+}
+
 export interface SetRecord {
   session_date: string
   opp_code: string
@@ -26,6 +37,7 @@ export interface SetRecord {
   pro_baseline: Metrics | null
   pro_games: number
   gameplan: Record<string, unknown>
+  moments?: Moment[]
 }
 
 export interface SessionData {
@@ -65,6 +77,8 @@ export interface AppConfig {
   coachBackend: 'api' | 'claude-cli'
   coachModel: CoachModel
   onboarded: boolean
+  playbackDolphin: string
+  meleeIso: string
 }
 
 export type CoachModel = 'opus' | 'sonnet' | 'haiku'
@@ -131,6 +145,8 @@ export interface NoJohnsApi {
   coachHasConversation: () => Promise<boolean>
   onCoachDelta: (cb: (text: string) => void) => () => void
   onEngineEvent: (cb: (e: EngineEvent) => void) => () => void
+  playbackQueue: (moments: Moment[]) => Promise<QueuePlaybackResult>
+  playbackStatus: () => Promise<PlaybackStatus>
 }
 
 export interface CoachKeyStatus {
@@ -174,6 +190,18 @@ export interface CoachResult {
   text?: string
   gaps?: CoachGap[]
   usage?: CoachUsage
+}
+
+export interface PlaybackStatus {
+  dolphin: boolean
+  iso: boolean
+}
+
+export interface QueuePlaybackResult {
+  ok: boolean
+  queued?: number
+  missing?: number
+  reason?: 'no_dolphin' | 'no_iso' | 'no_replays'
 }
 
 export interface DoctorResult {

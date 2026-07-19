@@ -43,7 +43,10 @@ const api = {
     const listener = (_: unknown, e: Record<string, unknown>): void => cb(e)
     ipcRenderer.on('engine:event', listener)
     return () => ipcRenderer.removeListener('engine:event', listener)
-  }
+  },
+  playbackQueue: (moments: unknown[]): Promise<unknown> =>
+    ipcRenderer.invoke('playback:queue', moments),
+  playbackStatus: (): Promise<unknown> => ipcRenderer.invoke('playback:status')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

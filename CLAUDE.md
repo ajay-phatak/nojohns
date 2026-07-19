@@ -38,6 +38,13 @@ engine, shipped as a PyInstaller sidecar. Windows-first.
   the player's metrics — keep both sides of the comparison on one code path.
 - Renderer never sees secrets or spawns processes; all engine/IPC work is in
   `src/main/`, typed in `src/preload/index.d.ts`.
+- Moments ("watch these" clips): each set record in session.json carries a
+  `moments` array (deaths / missed edgeguards / best punishes) with absolute
+  .slp paths and MELEE-numbered frames (engine index − 123). The schema is
+  duplicated in `session_review._set_moments` and `Moment` in
+  `src/preload/index.d.ts` — keep them in sync. `src/main/playback.ts` writes
+  the Dolphin comm file and spawns the Slippi playback Dolphin (auto-detected
+  from the Launcher install, overridable in Settings).
 - Notes (`src/main/notes/`) are regenerable views over session/trends JSON —
   never a data store. Generated regions sit between `<!-- nojohns:begin/end -->`
   sentinels; everything outside is user text and must survive rewrites

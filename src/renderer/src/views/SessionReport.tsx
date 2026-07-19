@@ -1,6 +1,62 @@
 import { useState } from 'react'
-import type { SetRecord } from '../../../preload/index.d'
+import type { Moment, SetRecord } from '../../../preload/index.d'
 import { HEADLINE_METRICS } from '../metrics'
+
+const MOMENT_GROUPS: { kind: Moment['kind']; label: string }[] = [
+  { kind: 'death', label: 'Deaths' },
+  { kind: 'missed_edgeguard', label: 'Missed edgeguards' },
+  { kind: 'best_punish', label: 'Best punishes' }
+]
+
+const QUEUE_ERROR: Record<string, string> = {
+  no_dolphin: 'Playback Dolphin not found — set it in Settings',
+  no_iso: 'Melee ISO not found — set it in Settings',
+  no_replays: 'Replay files not found (moved or deleted)'
+}
+
+function MomentChips({ moments }: { moments: Moment[] }): React.JSX.Element | null {
+  const [pending, setPending] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  const groups = MOMENT_GROUPS.map((g) => ({
+    ...g,
+    items: moments.filter((m) => m.kind === g.kind)
+  })).filter((g) => g.items.length > 0)
+
+  if (groups.length === 0) return null
+
+  const queue = async (kind: string, items: Moment[]): Promise<void> => {
+    setPending(kind)
+    try {
+      const res = await window.api.playbackQueue(items)
+      if (res.ok) {
+        setError('')
+      } else {
+        setError(QUEUE_ERROR[res.reason ?? ''] ?? `Could not queue playback (${res.reason})`)
+      }
+    } finally {
+      setPending(null)
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div className="row">
+        {groups.map((g) => (
+          <button
+            key={g.kind}
+            className="btn-sm"
+            disabled={pending === g.kind}
+            onClick={() => queue(g.kind, g.items)}
+          >
+            ▶ {g.label} ({g.items.length})
+          </button>
+        ))}
+      </div>
+      {error && <p className="neg tiny">{error}</p>}
+    </div>
+  )
+}
 
 function GapChip({
   mine,
@@ -71,6 +127,7 @@ function SetCard({ set }: { set: SetRecord }): React.JSX.Element {
           })}
         </tbody>
       </table>
+      {set.moments && <MomentChips moments={set.moments} />}
     </div>
   )
 }

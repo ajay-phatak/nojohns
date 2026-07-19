@@ -1922,6 +1922,9 @@ class GameAnalyzer:
                     "neutral_win_by":      _count_contexts(opp_seqs, "winner_context", neutral_only=True),
                 },
                 "edgeguard": eg.summary(),
+                # Raw recovery trips behind that summary, frame-level — feeds
+                # the app's replay clip queue (session_review._set_moments).
+                "edgeguard_trips": list(eg.situations),
             }
 
         return {

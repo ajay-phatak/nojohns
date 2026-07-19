@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { AppConfig, CliDetection, CoachKeyStatus } from '../../../preload/index.d'
+import type {
+  AppConfig,
+  CliDetection,
+  CoachKeyStatus,
+  PlaybackStatus
+} from '../../../preload/index.d'
 import { CHARACTERS } from '../characters'
 
 interface Props {
@@ -52,10 +57,14 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
   const [keyError, setKeyError] = useState('')
   const [backend, setBackend] = useState(config.coachBackend)
   const [cli, setCli] = useState<CliDetection | null>(null)
+  const [playbackDolphin, setPlaybackDolphin] = useState(config.playbackDolphin ?? '')
+  const [meleeIso, setMeleeIso] = useState(config.meleeIso ?? '')
+  const [playback, setPlayback] = useState<PlaybackStatus | null>(null)
 
   useEffect(() => {
     window.api.coachKeyStatus().then(setKeyStatus)
     window.api.detectClaudeCli().then(setCli)
+    window.api.playbackStatus().then(setPlayback)
   }, [])
 
   const browseNotes = async (): Promise<void> => {
@@ -91,7 +100,9 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
       matchups,
       notesFolder: notesFolder || null,
       autoWriteNotes: autoWrite,
-      coachBackend: backend
+      coachBackend: backend,
+      playbackDolphin,
+      meleeIso
     })
     onSaved(next)
     setSaved(true)
@@ -204,6 +215,34 @@ function Settings({ config, onSaved }: Props): React.JSX.Element {
           {keyError && <p className="neg small">{keyError}</p>}
         </div>
       )}
+
+      <h4>Playback</h4>
+      <p className="muted small" style={{ marginTop: -8 }}>
+        Overrides for the Slippi playback Dolphin and Melee ISO used by &quot;Watch these
+        moments&quot; chips in the session report. Leave blank to auto-detect.
+      </p>
+      <div className="row" style={{ marginBottom: 8 }}>
+        <span className="dim small" style={{ minWidth: 160 }}>
+          Playback Dolphin.exe
+        </span>
+        <input
+          style={{ flex: 1, padding: 6 }}
+          value={playbackDolphin}
+          placeholder={playback?.dolphin ? 'auto-detected' : 'not found — set path'}
+          onChange={(e) => setPlaybackDolphin(e.target.value)}
+        />
+      </div>
+      <div className="row">
+        <span className="dim small" style={{ minWidth: 160 }}>
+          Melee ISO
+        </span>
+        <input
+          style={{ flex: 1, padding: 6 }}
+          value={meleeIso}
+          placeholder={playback?.iso ? 'auto-detected' : 'not found — set path'}
+          onChange={(e) => setMeleeIso(e.target.value)}
+        />
+      </div>
 
       <div style={{ marginTop: 16 }}>
         <button

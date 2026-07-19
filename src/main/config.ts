@@ -16,6 +16,10 @@ export interface AppConfig {
   // engine, so sonnet is the default; opus for deeper reads, haiku for cheap.
   coachModel: 'opus' | 'sonnet' | 'haiku'
   onboarded: boolean
+  // Overrides for the playback Dolphin / ISO path; empty string means "use
+  // auto-detection" (see src/main/playback.ts).
+  playbackDolphin: string
+  meleeIso: string
 }
 
 const DEFAULTS: AppConfig = {
@@ -27,7 +31,9 @@ const DEFAULTS: AppConfig = {
   autoWriteNotes: false,
   coachBackend: 'api',
   coachModel: 'sonnet',
-  onboarded: false
+  onboarded: false,
+  playbackDolphin: '',
+  meleeIso: ''
 }
 
 const configPath = (): string => join(app.getPath('userData'), 'config.json')
